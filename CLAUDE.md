@@ -105,7 +105,7 @@ Botón "✎ Certificados" en la tarjeta Total Certificado abre el panel con TODO
 
 ## Sueldos del personal mensual (oct-2026)
 
-Desde sep-2026 el archivo mensual de TANGO ("MM - YYYY QUINCENAS") trae una hoja **"Mensuales"** (LEG | APELLIDO Y NOMBRE | … | TOTAL) con el sueldo del personal mensual (administración). No es MO de obras: `parsearHojaMensualesTango` la lee aparte y `buildData` la mete en `gastosEstructura[mes].porCuenta` como la cuenta "Sueldos personal mensual" (`sueldos: true`, `facturas` = una por persona con legajo). En el front entra al total y a la distribución de Gastos de Estructura y a Rentabilidad; `_gestVisible()` la saca (lista y total) para el rol Administración, que no ve sueldos.
+Desde sep-2026 el archivo mensual de TANGO ("MM - YYYY QUINCENAS") trae una hoja **"Mensuales"** (LEG | APELLIDO Y NOMBRE | … | TOTAL) con el sueldo del personal mensual (administración). No es MO de obras: `parsearHojaMensualesTango` la lee aparte y `buildData` la mete en `gastosEstructura[mes].porCuenta` como la cuenta "Sueldos personal mensual" (`sueldos: true`, `facturas` = una por persona con legajo). Solo la ven **Adrián y María** (`VE_SUELDOS` en `lib/session.js`): `api/datos.js` saca esa cuenta del JSON y recalcula el total del mes para cualquier otro usuario, `/api/auth/me` devuelve `veSueldos` y el front pone la clase `ve-sueldos` en body (`_gestVisible()` y `.solo-ve-sueldos` son la segunda capa). Para los demás, Gastos de Estructura y Rentabilidad muestran solo el libro mayor de Romina.
 
 ## Planilla de Esteban: columna de código (oct-2026)
 

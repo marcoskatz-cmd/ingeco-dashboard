@@ -630,6 +630,7 @@
 
   /* CONTROL DE ACCESO POR ROL — admin no ve sueldos/MO */
   body.role-admin [data-restrict="sueldos"] { display: none !important; }
+  body:not(.ve-sueldos) .solo-ve-sueldos { display: none !important; }
   /* Oculta la columna "MO (prorrateada)" (4ta) en la tabla de contribución por obra */
   body.role-admin #tabla-resumen-obra th:nth-child(4),
   body.role-admin #tabla-resumen-obra td:nth-child(4):not([colspan]) { display: none !important; }
@@ -1711,16 +1712,16 @@
         <div class="kpi-label">Total Gastos de Estructura</div>
         <div class="kpi-value neg-val" id="kpi-gest-total">sin dato</div>
         <div class="kpi-sub" id="kpi-gest-sub">Actualizá datos para cargar</div>
-        <div class="fuente">Libro mayor administrativo (cuentas ADMIN) + sueldos del personal mensual (TANGO)</div>
+        <div class="fuente">Libro mayor administrativo (cuentas ADMIN)<span class="solo-ve-sueldos"> + sueldos del personal mensual (TANGO)</span></div>
       </div>
     </div>
 
     <div class="section-title" style="margin-top:6px;">Gastos de Estructura por categoría · <span id="mes-label-gest"></span></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Gastos administrativos (ADMIN) del libro mayor más los sueldos del personal mensual (hoja "Mensuales" de TANGO, desde septiembre). No incluye combustible/distribución. Hacé click en una categoría para ver el detalle.</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Gastos administrativos (ADMIN) del libro mayor<span class="solo-ve-sueldos"> más los sueldos del personal mensual (hoja "Mensuales" de TANGO, desde septiembre)</span>. No incluye combustible/distribución. Hacé click en una categoría para ver el detalle.</div>
     <div class="chart-card" id="gest-chart" style="padding:22px 24px;">
       <div class="nd" style="text-align:center;padding:20px;font-size:13px;">Presioná "Actualizar datos" para cargar desde Drive</div>
     </div>
-    <div class="nota-fuente" style="margin-top:8px;">📄 Fuentes: libro mayor de gastos administrativos (Romina), asientos por factura · sueldos del personal mensual (Mauro, TANGO), una fila por persona. Agrupados por categoría y mes.</div>
+    <div class="nota-fuente" style="margin-top:8px;">📄 Fuentes: libro mayor de gastos administrativos (Romina), asientos por factura<span class="solo-ve-sueldos"> · sueldos del personal mensual (Mauro, TANGO), una fila por persona</span>. Agrupados por categoría y mes.</div>
   </div>
 </div>
 
@@ -11375,11 +11376,12 @@ function _sintetizarTotales() {
 // ================================================================
 // Categoría de alto nivel de una cuenta de gastos administrativos: consolida
 // cuentas afines (ej. las 3 de honorarios) para ordenar la sección por categoría.
-// Datos de Gastos de Estructura visibles según el rol: Administración no ve
-// sueldos, así que la cuenta "Sueldos personal mensual" (TANGO) se saca
-// de la lista y del total. Directorio ve todo.
+// Gastos de Estructura visibles según el usuario: la cuenta "Sueldos personal
+// mensual" (TANGO) solo la ven Adrián y María (clase ve-sueldos, la pone
+// bootAuth con el flag del servidor). El proxy ya la saca del JSON para el
+// resto; esto es la segunda capa.
 function _gestVisible(datos) {
-  if (!datos || !esAdmin()) return datos;
+  if (!datos || document.body.classList.contains('ve-sueldos')) return datos;
   const porCuenta = (datos.porCuenta || []).filter(c => !c.sueldos);
   return { total: porCuenta.reduce((s, c) => s + (c.total || 0), 0), porCuenta };
 }
@@ -11940,6 +11942,7 @@ async function cerrarSesion() {
     const me = await r.json();
     applyRole(me.role, me.email);
     document.body.classList.toggle('edita-obras', !!me.editaObras);
+    document.body.classList.toggle('ve-sueldos', !!me.veSueldos);
     document.body.classList.add('authed');
   } catch (e) {
     location.replace('/login.html?next=' + encodeURIComponent(location.pathname + location.search));
