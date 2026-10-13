@@ -7403,6 +7403,11 @@ function irAAuditoriaObra(nombre) {
   setTimeout(() => match[0].scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
 }
 
+// Filtro por responsable en Auditorías ('' = todos). Las alertas compartidas
+// ("Esteban / Agustín") cuentan y se muestran para cada uno.
+let _auditFiltroPersona = '';
+function _auditPersonas(r) { return String(r.responsable || '').split('/').map(x => x.trim()).filter(Boolean); }
+function filtrarAuditorias(p) { _auditFiltroPersona = p || ''; renderAuditorias(); }
 function renderAuditorias() {
   const list = document.getElementById('audit-list');
   const resumen = document.getElementById('audit-resumen');
@@ -7450,12 +7455,32 @@ function renderAuditorias() {
     return;
   }
 
-  list.innerHTML = AUDIT_RESULTADOS.map(r => `
+  // Pendientes por responsable + filtro por persona
+  const porPersona = {};
+  AUDIT_RESULTADOS.forEach(r => _auditPersonas(r).forEach(p => { porPersona[p] = porPersona[p] || { n: 0, graves: 0 }; porPersona[p].n++; if (r.grave) porPersona[p].graves++; }));
+  if (_auditFiltroPersona && !porPersona[_auditFiltroPersona]) _auditFiltroPersona = '';
+  const chip = (label, val, n, graves) => {
+    const on = _auditFiltroPersona === val;
+    return `<button onclick="filtrarAuditorias('${val}')" style="cursor:pointer;border:1.5px solid ${on ? 'var(--primary)' : 'var(--border)'};background:${on ? 'var(--primary)' : '#fff'};color:${on ? '#fff' : 'var(--text)'};border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+      ${label}<span style="background:${on ? 'rgba(255,255,255,.25)' : '#eef2f7'};color:${on ? '#fff' : 'var(--text)'};border-radius:10px;padding:0 7px;font-size:11px;">${n}</span>${graves ? `<span title="${graves} grave${graves !== 1 ? 's' : ''}" style="color:${on ? '#fecaca' : '#dc2626'};font-size:11px;">🔴${graves}</span>` : ''}</button>`;
+  };
+  const personas = Object.keys(porPersona).sort((a, b) => porPersona[b].n - porPersona[a].n || a.localeCompare(b, 'es'));
+  const visibles = _auditFiltroPersona ? AUDIT_RESULTADOS.filter(r => _auditPersonas(r).includes(_auditFiltroPersona)) : AUDIT_RESULTADOS;
+  const filtroHtml = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Pendientes por responsable</span>
+      ${chip('Todos', '', AUDIT_RESULTADOS.length, graves)}
+      ${personas.map(p => chip(p, p, porPersona[p].n, porPersona[p].graves)).join('')}
+      ${_auditFiltroPersona ? `<span style="font-size:11px;color:var(--muted);">Mostrando ${visibles.length} de ${AUDIT_RESULTADOS.length} · las compartidas aparecen para cada uno</span>` : ''}
+    </div>`;
+
+  list.innerHTML = filtroHtml + visibles.map(r => `
     <details data-audit-titulo="${r.titulo.replace(/"/g, '&quot;')}" data-audit-chequeo="${r.chequeo}" style="background:#fff;border:1px solid ${r.grave ? '#fecaca' : 'var(--border)'};border-left:4px solid ${r.grave ? '#dc2626' : '#f59e0b'};border-radius:10px;padding:0;margin-bottom:10px;overflow:hidden;">
       <summary style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:13px 16px;flex-wrap:wrap;">
         <span>${r.grave ? '🔴' : '🟡'}</span>
         <span class="status-badge ${r.grave ? 'pendiente' : 'parcial'}" style="font-size:10px;">${r.chequeo}</span>
         <strong style="font-size:13px;">${r.titulo}</strong>
+        <span title="Responsable de resolverlo" style="font-size:10px;font-weight:700;color:var(--primary);background:#eef2f7;border-radius:8px;padding:2px 8px;white-space:nowrap;">→ ${r.responsable || '—'}</span>
         <span style="margin-left:auto;font-weight:800;font-size:14px;">${fmt(r.monto)}</span>
       </summary>
       <div style="padding:0 16px 14px;border-top:1px solid var(--border);">
