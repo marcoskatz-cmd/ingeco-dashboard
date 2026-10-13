@@ -919,7 +919,7 @@
   <div id="bot-msgs"></div>
   <div id="bot-sug"></div>
   <form id="bot-form" onsubmit="return botEnviar(event)">
-    <textarea id="bot-in" rows="1" placeholder="Ej.: ¿cuánto gastamos en insumos en la SAT en octubre?" onkeydown="if(event.key==='Enter'&amp;&amp;!event.shiftKey){event.preventDefault();botEnviar();}" oninput="this.style.height='auto';this.style.height=Math.min(96,this.scrollHeight)+'px'"></textarea>
+    <textarea id="bot-in" rows="1" placeholder="Escribí tu pregunta…" onkeydown="if(event.key==='Enter'&amp;&amp;!event.shiftKey){event.preventDefault();botEnviar();}" oninput="this.style.height='auto';this.style.height=Math.min(96,this.scrollHeight)+'px'"></textarea>
     <button id="bot-send" type="submit" title="Enviar" aria-label="Enviar">➤</button>
   </form>
   <div id="bot-foot">Responde solo con los datos cargados en el tablero. Puede equivocarse: verificá las cifras importantes en la tarjeta correspondiente.</div>
