@@ -25,6 +25,7 @@ Reglas:
 
 Glosario del paquete:
 - meses: por mes (ene..dic 2026). obras[]: por obra: certificado (lo certificado del período, archivo de Agustín), estadoCert, insumos (OC de insumos, Guillermo, incluye MO tercerizada moHormigon), moPropia (mano de obra propia TANGO), alquiler (alquiler interno de equipos), asfaltoCalienteTn / asfaltoFrioTn (remitos), costoAsfalto (teórico), margen (contribución marginal = certificado − insumos − moPropia − alquiler − costoAsfalto).
+- ocInsumos: OC de insumos del mes (planilla de Guillermo): total, cantidad de OC y por obra la lista de proveedores con monto y nOC (cantidad de órdenes). Si nOC es 1, ese monto es el de una sola OC; si es mayor, es la suma de varias. No hay detalle orden por orden ni fechas de pago (eso está en la planilla de Guillermo o en el libro mayor de Romina). "Obra no disponible" / "Sin clasificar" = OC sin obra asignada.
 - provisiones[]: certificación de provisiones de asfalto/pavimax del mes (real de Esteban si la cargó, si no teórica tn × precio).
 - totalCertificado: certificado de obras + provisiones del mes (es la tarjeta "Total Certificado").
 - cobrosEsteban: por obra, lo cobrado, facturado (sin cobrar), programado (sin fecha) y menosProbable del mes según la planilla de Esteban.

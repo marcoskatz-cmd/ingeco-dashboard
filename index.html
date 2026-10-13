@@ -12334,6 +12334,15 @@ function _botPaquete() {
     }
     if (gest && gest.total) mes.estructura = _gestCategorias(gest).map(c => ({ categoria: c.categoria, total: _r0(c.total) })).concat([{ categoria: 'TOTAL', total: _r0(gest.total) }]);
     if (rem && (rem.caliente || rem.frio)) mes.asfaltoDespachadoTn = { caliente: Math.round(rem.caliente || 0), frio: Math.round(rem.frio || 0) };
+    // OC de insumos por obra y proveedor (Guillermo): monto y cantidad de OC.
+    // Cuando nOC = 1 el monto es el de esa única orden.
+    const oc = OC_INSUMOS[m];
+    if (oc && Array.isArray(oc.items) && oc.items.length) {
+      mes.ocInsumos = { total: _r0(oc.total), nOC: oc.nOC || undefined, porObra: oc.items.map(it => ({
+        obra: it.obra, monto: _r0(it.monto), nOC: it.nOC || undefined, interna: it.esInt || undefined,
+        proveedores: (it.proveedores || []).slice().sort((a, b) => b.monto - a.monto).slice(0, 10).map(p => ({ proveedor: p.proveedor, monto: _r0(p.monto), nOC: p.nOC || undefined })),
+      })) };
+    }
     P.meses[m] = mes;
   });
   try { const seg = _seguimientoCobros(); if (seg) P.seguimientoCobros = Object.fromEntries(Object.entries(seg.obras).map(([k, v]) => [k, { cobrado: _r0(v.cob), pendiente: _r0(v.pend) }])); } catch (e) {}
