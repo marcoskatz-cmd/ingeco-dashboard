@@ -7347,6 +7347,28 @@ function runAuditorias() {
     });
   }
 
+  // Mismo certificado visto desde los dos lados: Agustín lo marcó "Cobrada"
+  // (Cobro sin registrar) y Esteban lo tiene facturado sin cobrar (le "falta"
+  // a Agustín en Agustín vs Esteban). Si el monto coincide, es una sola cosa.
+  (() => {
+    const fusion = [];
+    AUDIT_RESULTADOS.forEach(a => {
+      if (a.chequeo !== 'Agustín vs Esteban' || a.responsable !== 'Agustín' || a._fusion) return;
+      const b = AUDIT_RESULTADOS.find(x => x.chequeo === 'Cobro sin registrar' && !x._fusion
+        && (x.titulo || '').toLowerCase().trim() === (a.titulo || '').toLowerCase().trim()
+        && Math.abs((x.monto || 0) - (a.monto || 0)) <= AUDIT_TOLERANCIA);
+      if (!b) return;
+      a._fusion = b._fusion = true;
+      const itE = (a.items || []).filter(i => i.src === 'esteban');
+      const itA = (b.items || []);
+      fusion.push({
+        chequeo: 'Cobrada vs facturada', titulo: a.titulo, monto: a.monto, grave: a.grave || b.grave,
+        resumen: `Es el mismo certificado de ${fmt(a.monto)}: Agustín lo marcó "Cobrada" y Esteban lo tiene facturado, todavía sin cobro. Si la plata ya entró, Esteban tiene que registrar el cobro; si no, la fila de Agustín vuelve a "A Cobrar".`,
+        pistaItems: [], responsable: 'Esteban / Agustín', items: itA.concat(itE),
+      });
+    });
+    if (fusion.length) AUDIT_RESULTADOS = AUDIT_RESULTADOS.filter(r => !r._fusion).concat(fusion);
+  })();
   AUDIT_RESULTADOS = AUDIT_RESULTADOS.filter(r => !_auditResuelta(r));
   AUDIT_RESULTADOS.sort((a, b) => (b.grave - a.grave) || (b.monto - a.monto));
 }
