@@ -685,6 +685,25 @@ function buildData() {
   catch(e) { Logger.log('precioAsfalto error: ' + e); result.precioAsfalto = null; }
   try { result.gastosEstructura = leerGastosEstructura(); }
   catch(e) { Logger.log('gastosEstructura error: ' + e); result.gastosEstructura = null; }
+  // Sueldos del personal mensual (hoja "Mensuales" de TANGO, oct-2026): van
+  // a Gastos de Estructura como una cuenta más, con el detalle por persona.
+  try {
+    const mens = tangoData.mensuales || {};
+    Object.keys(mens).forEach(function(mes) {
+      const m = mens[mes]; if (!m || !(m.total > 0)) return;
+      if (!result.gastosEstructura) result.gastosEstructura = {};
+      if (!result.gastosEstructura[mes]) result.gastosEstructura[mes] = { total: 0, porCuenta: [] };
+      const g = result.gastosEstructura[mes];
+      g.porCuenta = (g.porCuenta || []).filter(function(c) { return !c.sueldos; });
+      g.porCuenta.push({
+        codigo: 'TANGO', nombre: 'Sueldos personal mensual', cuenta: 'TANGO - SUELDOS PERSONAL MENSUAL',
+        total: m.total, nFacturas: m.n, sueldos: true,
+        facturas: m.personas.map(function(p) { return { fecha: '', proveedor: p.nombre, comprobante: p.leg ? 'Leg. ' + p.leg : '', monto: p.total }; }),
+      });
+      g.porCuenta.sort(function(a, b) { return b.total - a.total; });
+      g.total = g.porCuenta.reduce(function(s, c) { return s + c.total; }, 0);
+    });
+  } catch(e) { Logger.log('sueldos mensuales error: ' + e); }
   try { result.fechasFuentes = leerFechasFuentes(); }
   catch(e) { Logger.log('fechasFuentes error: ' + e); result.fechasFuentes = null; }
   return result;
@@ -735,6 +754,7 @@ function leerTangoMO() {
     const files   = folder.getFiles();
     const resultado = {};
     const resultadoQuincenas = {};
+    const resultadoMensuales = {};
 
     while (files.hasNext()) {
       const file    = files.next();
@@ -789,14 +809,15 @@ function leerTangoMO() {
         Object.defineProperty(resultado[mes], '_meta', { value: { nombre: file.getName(), esCopia: esCopia, modif: file.getLastUpdated().getTime() }, enumerable: false });
         resultadoQuincenas[mes] = data.quincenas || [];
       }
+      if (data && data.mensuales) resultadoMensuales[mes] = data.mensuales;
     }
 
-    Logger.log('Tango MO — meses cargados: ' + Object.keys(resultado).join(', '));
-    return { porCentro: resultado, quincenas: resultadoQuincenas };
+    Logger.log('Tango MO — meses cargados: ' + Object.keys(resultado).join(', ') + ' | mensuales: ' + Object.keys(resultadoMensuales).join(', '));
+    return { porCentro: resultado, quincenas: resultadoQuincenas, mensuales: resultadoMensuales };
 
   } catch (err) {
     Logger.log('leerTangoMO error: ' + err.toString());
-    return { porCentro: null, quincenas: null };
+    return { porCentro: null, quincenas: null, mensuales: null };
   }
 }
 
@@ -840,9 +861,18 @@ function parsearGSheetTangoMO(file) {
   const sheets = ss.getSheets();
   const totales = {}; // key = "centro||clasificacion" — acumulado de TODAS las quincenas
   const quincenas = []; // [{nombre, total, totalObra, totalTaller, totalPlanta}] — una por pestaña
+  let mensuales = null; // hoja "Mensuales": sueldos del personal mensual → Gastos de Estructura
 
   for (const sheet of sheets) {
     const rows = sheet.getDataRange().getValues();
+
+    // Hoja "Mensuales" (desde sep-2026, Mauro): LEG | APELLIDO Y NOMBRE | … | TOTAL.
+    // No es MO de obras: es el sueldo del personal mensual (administración), va
+    // a Gastos de Estructura. Se lee aparte y se saltea el parseo de quincenas.
+    if (/mensual/i.test(sheet.getName())) {
+      mensuales = parsearHojaMensualesTango(sheet, rows) || mensuales;
+      continue;
+    }
 
     let hdrIdx = -1, iClave = -1, iMonto = -1, iClasif = -1, modo = null, iClaveFallback = -1;
 
@@ -959,8 +989,35 @@ function parsearGSheetTangoMO(file) {
     .sort((a, b) => b.monto - a.monto);
 
   Logger.log('Tango GSheet "' + file.getName() + '" — ' + result.length + ' obras/centros, total=' +
-    result.reduce((s, r) => s + r.monto, 0) + ' | quincenas: ' + quincenas.map(q => q.nombre + '=' + q.total).join(', '));
-  return { rows: result, quincenas: quincenas };
+    result.reduce((s, r) => s + r.monto, 0) + ' | quincenas: ' + quincenas.map(q => q.nombre + '=' + q.total).join(', ') +
+    (mensuales ? ' | mensuales: ' + mensuales.n + ' personas = ' + mensuales.total : ''));
+  return { rows: result, quincenas: quincenas, mensuales: mensuales };
+}
+
+// Hoja "Mensuales" del archivo de TANGO: una fila por persona con el TOTAL
+// del mes (última columna "TOTAL"). Devuelve { total, n, personas: [{leg, nombre, total}] }.
+function parsearHojaMensualesTango(sheet, rows) {
+  let hdr = -1, iLeg = -1, iNom = -1, iTot = -1;
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
+    const cells = rows[i].map(c => String(c).toUpperCase().trim());
+    const il = cells.indexOf('LEG'), it = cells.lastIndexOf('TOTAL');
+    if (il >= 0 && it >= 0) { hdr = i; iLeg = il; iTot = it; iNom = cells.findIndex(c => c.includes('APELLIDO') || c.includes('NOMBRE')); break; }
+  }
+  if (hdr < 0) { Logger.log('Tango Mensuales [' + sheet.getName() + '] — sin encabezado LEG/TOTAL, omitida'); return null; }
+  const personas = [];
+  for (let i = hdr + 1; i < rows.length; i++) {
+    const row = rows[i];
+    const nombre = iNom >= 0 ? String(row[iNom] || '').trim() : '';
+    const leg = String(row[iLeg] || '').trim();
+    if (!nombre || /^total/i.test(nombre) || /^total/i.test(leg)) continue;
+    const raw = row[iTot];
+    const monto = typeof raw === 'number' ? raw : parsearMonto(String(raw || ''));
+    if (!monto || monto <= 0) continue;
+    personas.push({ leg: leg, nombre: nombre, total: Math.round(monto) });
+  }
+  if (!personas.length) return null;
+  personas.sort((a, b) => b.total - a.total);
+  return { total: personas.reduce((s, p) => s + p.total, 0), n: personas.length, personas: personas };
 }
 
 // Fallback: parsea un CSV/TXT de TANGO exportado
