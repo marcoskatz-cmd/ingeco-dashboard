@@ -7542,7 +7542,11 @@ function _normalizarObrasEsteban() {
     ['cobrados', 'facturados', 'noCobrados', 'sinFecha', 'menosProbable'].forEach(cat => (x[cat] || []).forEach(it => {
       if (it._norm) return;
       it._norm = true;
-      const reglas = SPLIT_OBRA_ESTEBAN[(it.obra || '').trim()];
+      // Si Esteban cargó un código distinto del nombre de obra (ej. "Obra SAT"
+      // → "SAT - Adicionales"), ese código manda sobre las reglas por concepto.
+      const codE = (it.cod || '').trim(), obraE = (it.obra || '').trim();
+      if (codE && codE.toLowerCase() !== obraE.toLowerCase() && !ALIAS_ESTEBAN[obraE]) { it.obraOriginal = it.obra; it.obra = codE; return; }
+      const reglas = SPLIT_OBRA_ESTEBAN[obraE];
       if (!reglas) return;
       const r = reglas.find(([re]) => re.test(it.concepto || ''));
       if (r) { it.obraOriginal = it.obra; it.obra = r[1]; }

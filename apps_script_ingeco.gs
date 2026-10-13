@@ -2823,7 +2823,11 @@ function leerCobrosEsteban() {
       const iImporte   = _findCobCol(headers, ['IMPORTE']);
       const iFechaProb = _findCobCol(headers, ['PROBABLE']);
       const iFechaReal = _findCobCol(headers, ['REAL']);
-      const iCod       = _findCobCol(headers, ['COD']);
+      // Columna de código del Maestro (col H). En la planilla de Esteban no
+      // tiene encabezado: si no se encuentra por nombre, es la que sigue a
+      // FECHA REAL DE COBRO (oct-2026: "Obra SAT" → "SAT - Adicionales").
+      let iCod = _findCobCol(headers, ['COD', 'CÓD']);
+      if (iCod === null && iFechaReal !== null && rows[hdrIdx].length > iFechaReal + 1) iCod = iFechaReal + 1;
 
       if (iObra === null || iImporte === null) {
         Logger.log('CobrosEsteban [' + sheet.getName() + '] — sin columnas OBRA/IMPORTE, omitida');
