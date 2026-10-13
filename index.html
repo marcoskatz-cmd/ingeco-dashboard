@@ -799,7 +799,7 @@
 <div class="header">
   <div>
     <h1>INGECO — Dashboard Ejecutivo</h1>
-    <div class="subtitle">Adrián Koss, Socio Director</div>
+    <div class="subtitle" id="saludo-usuario">Dashboard Ejecutivo 2026</div>
   </div>
   <div style="display:flex; gap:20px; align-items:center;">
     <div class="month-selector">
@@ -12051,6 +12051,8 @@ async function cerrarSesion() {
     applyRole(me.role, me.email);
     document.body.classList.toggle('edita-obras', !!me.editaObras);
     document.body.classList.toggle('ve-sueldos', !!me.veSueldos);
+    const saludoEl = document.getElementById('saludo-usuario');
+    if (saludoEl && me.nombre) { const h = new Date().getHours(); saludoEl.textContent = (h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches') + ', ' + me.nombre; }
     document.body.classList.add('authed');
   } catch (e) {
     location.replace('/login.html?next=' + encodeURIComponent(location.pathname + location.search));
