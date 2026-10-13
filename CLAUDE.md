@@ -103,6 +103,14 @@ Botón "✎ Certificados" en la tarjeta Total Certificado abre el panel con TODO
 
 `_saldosContrato()` (index.html) calcula por obra: contrato (el MAYOR "Monto Total" entre las filas de la obra en Obras a cobrar) − certificado (suma de "Monto a certificar" + "Anticipo financiero" de todas las filas; si en una fila anticipo == monto es el mismo dinero y cuenta una vez). Solo se muestra si el saldo supera `AUDIT_TOLERANCIA`; obras con varios contratos (Country Pilar por etapas) o con Monto Total repetido por certificado (Ruta 357) dan saldo negativo y no aparecen. Se ve en: fila gris "Pendiente de certificar" al final de cada obra en el panel de certificados, columna "Sin certificar" + tarjeta "Cartera pendiente de certificar" en Estado financiero. Es un cálculo, nunca escribe filas en la planilla.
 
+## Sueldos del personal mensual (oct-2026)
+
+Desde sep-2026 el archivo mensual de TANGO ("MM - YYYY QUINCENAS") trae una hoja **"Mensuales"** (LEG | APELLIDO Y NOMBRE | … | TOTAL) con el sueldo del personal mensual (administración). No es MO de obras: `parsearHojaMensualesTango` la lee aparte y `buildData` la mete en `gastosEstructura[mes].porCuenta` como la cuenta "Sueldos personal mensual" (`sueldos: true`, `facturas` = una por persona con legajo). En el front entra al total y a la distribución de Gastos de Estructura y a Rentabilidad; `_gestVisible()` la saca (lista y total) para el rol Administración, que no ve sueldos.
+
+## Planilla de Esteban: columna de código (oct-2026)
+
+La col H de cada pestaña mensual trae el código del Maestro pero **no tiene encabezado**; `leerCobrosEsteban` la toma como la columna que sigue a "FECHA REAL DE COBRO" si no encuentra una con "COD". En el front, `_normalizarObrasEsteban` prioriza ese código cuando difiere del nombre de obra (ej. "Obra SAT" → "SAT - Adicionales"); si es igual, aplica las reglas por concepto de `SPLIT_OBRA_ESTEBAN`.
+
 ## Otras cosas no obvias del dominio
 
 - **OC Insumos**: hay que distinguir obras "INT" (internas: Predio Warnes, Planta de Asfalto, Planta de Trituración — no son obras de construcción real) de obras reales. `getOCPlantaInterna()` filtra solo las internas; `getOCPlanta()` excluye las internas (para el total de obras). El campo `obra` de cada ítem de OC debe leerse de la columna **OBRA GENERAL** de la planilla de Guillermo Konicek, no de "OBRA PARTICULAR" (son columnas distintas con nombres parecidos, `_findCol` matchea por substring así que hay que priorizar `'obra general'` antes que `'obra'` en el array de keywords).
