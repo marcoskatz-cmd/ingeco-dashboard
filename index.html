@@ -730,6 +730,64 @@
     /* Organigrama: permitir scroll horizontal sin romper */
     .org-wrap { padding-bottom: 20px; }
   }
+
+  /* ===== Bot de consultas (robot flotante + chat) ===== */
+  #bot-fab { position: fixed; right: 22px; bottom: 22px; z-index: 950; width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer;
+    background: linear-gradient(145deg, #24466e, var(--primary)); box-shadow: var(--sh-lg);
+    display: flex; align-items: center; justify-content: center; padding: 0; transition: transform .25s var(--ease-spring), box-shadow .25s, opacity .2s; animation: bot-float 3.4s ease-in-out infinite; }
+  #bot-fab:hover { box-shadow: var(--sh-lg), var(--sh-gold); animation-play-state: paused; transform: translateY(-3px) rotate(-4deg); }
+  #bot-fab:active { transform: scale(.96); }
+  #bot-fab svg { width: 42px; height: 42px; display: block; overflow: visible; }
+  .bot-svg .bot-eye { animation: bot-blink 4.2s infinite; transform-origin: center; transform-box: fill-box; }
+  .bot-svg .bot-eye.r { animation-delay: .12s; }
+  .bot-svg .bot-antena-luz { animation: bot-glow 1.8s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  .bot-svg .bot-brazo { transform-origin: 100% 50%; transform-box: fill-box; animation: bot-saludo 3.4s ease-in-out infinite; }
+  #bot-fab .bot-tip { position: absolute; right: 74px; top: 50%; transform: translateY(-50%); background: #fff; color: var(--primary); font-size: 12px; font-weight: 700; padding: 6px 11px; border-radius: 10px; box-shadow: var(--sh-md); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+  #bot-fab .bot-tip::after { content: ''; position: absolute; right: -5px; top: 50%; width: 10px; height: 10px; background: #fff; transform: translateY(-50%) rotate(45deg); }
+  #bot-fab:hover .bot-tip, #bot-fab.bot-tip-visible .bot-tip { opacity: 1; transform: translateY(-50%) translateX(-2px); }
+  body.bot-abierto #bot-fab { animation: none; transform: scale(.9); opacity: 0; pointer-events: none; }
+  @keyframes bot-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  @keyframes bot-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+  @keyframes bot-glow { 0%,100% { opacity: .55; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.25); } }
+  @keyframes bot-saludo { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-35deg); } 86% { transform: rotate(10deg); } 94% { transform: rotate(-22deg); } }
+
+  #bot-panel { position: fixed; right: 22px; bottom: 22px; z-index: 960; width: 390px; max-width: calc(100vw - 24px); height: 600px; max-height: calc(100vh - 40px);
+    background: #fff; border-radius: 18px; box-shadow: 0 30px 70px -20px rgba(27,58,92,.45), 0 10px 24px -10px rgba(27,58,92,.25); border: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden; transform: translateY(24px) scale(.96); opacity: 0; pointer-events: none; transition: transform .28s var(--ease-out), opacity .22s; }
+  body.bot-abierto #bot-panel { transform: none; opacity: 1; pointer-events: auto; }
+  #bot-head { background: linear-gradient(135deg, var(--primary), #24466e); color: #fff; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+  #bot-head svg { width: 34px; height: 34px; flex: none; overflow: visible; }
+  #bot-head .t { font-family: var(--font-display); font-weight: 700; font-size: 14px; line-height: 1.15; }
+  #bot-head .s { font-size: 11px; opacity: .8; }
+  #bot-head button { margin-left: auto; background: rgba(255,255,255,.12); border: none; color: #fff; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+  #bot-head button:hover { background: rgba(255,255,255,.22); }
+  #bot-msgs { flex: 1; overflow-y: auto; padding: 14px 14px 6px; display: flex; flex-direction: column; gap: 10px; background: #f6f8fb; }
+  .bot-msg { max-width: 88%; padding: 9px 12px; border-radius: 14px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; animation: bot-in .22s var(--ease-out); }
+  .bot-msg.u { align-self: flex-end; background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+  .bot-msg.b { align-self: flex-start; background: #fff; color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; box-shadow: var(--sh-sm); }
+  .bot-msg.b.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+  .bot-msg.b strong { color: var(--primary); }
+  @keyframes bot-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .bot-dots { display: inline-flex; gap: 4px; align-items: center; height: 14px; }
+  .bot-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: bot-dot 1.1s infinite; }
+  .bot-dots i:nth-child(2) { animation-delay: .18s; } .bot-dots i:nth-child(3) { animation-delay: .36s; }
+  @keyframes bot-dot { 0%, 80%, 100% { transform: translateY(0); opacity: .45; } 40% { transform: translateY(-5px); opacity: 1; } }
+  #bot-sug { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 14px 8px; background: #f6f8fb; }
+  #bot-sug:empty { display: none; }
+  #bot-sug button { border: 1px solid var(--border); background: #fff; color: var(--primary); font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 20px; cursor: pointer; transition: background .15s, transform .15s; }
+  #bot-sug button:hover { background: #eef2f7; transform: translateY(-1px); }
+  #bot-form { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); background: #fff; }
+  #bot-in { flex: 1; border: 1.5px solid var(--border); border-radius: 12px; padding: 9px 12px; font-size: 13px; font-family: var(--font-body); resize: none; max-height: 96px; line-height: 1.4; outline: none; transition: border-color .15s, box-shadow .15s; }
+  #bot-in:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(27,58,92,.12); }
+  #bot-send { width: 42px; border: none; border-radius: 12px; background: var(--accent); color: #fff; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: transform .15s var(--ease-spring), filter .15s; flex: none; }
+  #bot-send:hover { filter: brightness(1.06); transform: translateY(-1px); }
+  #bot-send:disabled { opacity: .5; cursor: default; transform: none; }
+  #bot-foot { font-size: 10px; color: var(--muted); text-align: center; padding: 0 12px 8px; background: #fff; }
+  @media (max-width: 600px) {
+    #bot-panel { right: 0; bottom: 0; width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
+    #bot-fab { right: 14px; bottom: 14px; width: 56px; height: 56px; } #bot-fab svg { width: 36px; height: 36px; } #bot-fab .bot-tip { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { #bot-fab, .bot-svg .bot-eye, .bot-svg .bot-brazo, .bot-svg .bot-antena-luz, .bot-msg { animation: none !important; } }
 </style>
 </head>
 <body>
@@ -793,6 +851,54 @@
 
 <!-- PANEL LATERAL -->
 <div class="overlay" id="overlay" onclick="closePanel()"></div>
+<!-- ===== Bot de consultas ===== -->
+<button id="bot-fab" onclick="botAbrir()" title="Preguntale al tablero" aria-label="Abrir el asistente del tablero">
+  <svg class="bot-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <line x1="24" y1="10" x2="24" y2="5" stroke="#e8a100" stroke-width="2.2" stroke-linecap="round"/>
+  <circle class="bot-antena-luz" cx="24" cy="4.2" r="2.6" fill="#ffd166"/>
+  <rect x="11" y="10" width="26" height="20" rx="7" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1.2"/>
+  <rect x="15" y="15" width="18" height="10" rx="5" fill="#1b3a5c"/>
+  <circle class="bot-eye" cx="20.5" cy="20" r="2.2" fill="#7dd3fc"/>
+  <circle class="bot-eye r" cx="27.5" cy="20" r="2.2" fill="#7dd3fc"/>
+  <rect x="8" y="16" width="3" height="8" rx="1.5" fill="#e8a100"/>
+  <rect x="37" y="16" width="3" height="8" rx="1.5" fill="#e8a100"/>
+  <rect x="21" y="30" width="6" height="3" rx="1.5" fill="#dfe6ee"/>
+  <rect x="15" y="32" width="18" height="11" rx="5" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1.2"/>
+  <circle cx="24" cy="37.5" r="2" fill="#e8a100"/>
+  <g class="bot-brazo"><rect x="8" y="33" width="7" height="3.4" rx="1.7" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1"/></g>
+  <rect x="33" y="33" width="7" height="3.4" rx="1.7" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1"/>
+</svg>
+  <span class="bot-tip">Preguntale al tablero</span>
+</button>
+<div id="bot-panel" role="dialog" aria-label="Asistente del tablero">
+  <div id="bot-head">
+    <svg class="bot-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <line x1="24" y1="10" x2="24" y2="5" stroke="#e8a100" stroke-width="2.2" stroke-linecap="round"/>
+  <circle class="bot-antena-luz" cx="24" cy="4.2" r="2.6" fill="#ffd166"/>
+  <rect x="11" y="10" width="26" height="20" rx="7" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1.2"/>
+  <rect x="15" y="15" width="18" height="10" rx="5" fill="#1b3a5c"/>
+  <circle class="bot-eye" cx="20.5" cy="20" r="2.2" fill="#7dd3fc"/>
+  <circle class="bot-eye r" cx="27.5" cy="20" r="2.2" fill="#7dd3fc"/>
+  <rect x="8" y="16" width="3" height="8" rx="1.5" fill="#e8a100"/>
+  <rect x="37" y="16" width="3" height="8" rx="1.5" fill="#e8a100"/>
+  <rect x="21" y="30" width="6" height="3" rx="1.5" fill="#dfe6ee"/>
+  <rect x="15" y="32" width="18" height="11" rx="5" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1.2"/>
+  <circle cx="24" cy="37.5" r="2" fill="#e8a100"/>
+  <g class="bot-brazo"><rect x="8" y="33" width="7" height="3.4" rx="1.7" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1"/></g>
+  <rect x="33" y="33" width="7" height="3.4" rx="1.7" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1"/>
+</svg>
+    <div><div class="t">Asistente INGECO</div><div class="s" id="bot-estado">Pregunta sobre los números del tablero</div></div>
+    <button type="button" onclick="botCerrar()" title="Cerrar" aria-label="Cerrar">✕</button>
+  </div>
+  <div id="bot-msgs"></div>
+  <div id="bot-sug"></div>
+  <form id="bot-form" onsubmit="return botEnviar(event)">
+    <textarea id="bot-in" rows="1" placeholder="Ej.: ¿cuánto gastamos en insumos en la SAT en octubre?" onkeydown="if(event.key==='Enter'&amp;&amp;!event.shiftKey){event.preventDefault();botEnviar();}" oninput="this.style.height='auto';this.style.height=Math.min(96,this.scrollHeight)+'px'"></textarea>
+    <button id="bot-send" type="submit" title="Enviar" aria-label="Enviar">➤</button>
+  </form>
+  <div id="bot-foot">Responde solo con los datos cargados en el tablero. Puede equivocarse: verificá las cifras importantes en la tarjeta correspondiente.</div>
+</div>
+
 <div class="side-panel" id="sidePanel">
   <button class="panel-close" onclick="closePanel()">✕</button>
   <div id="panelContent"></div>
@@ -12055,6 +12161,125 @@ if (APPS_SCRIPT_URL) {
   // horario); si la pestaña queda abierta, el tablero lo recarga solo.
   setInterval(function() { cargarCache(true); }, 60 * 60 * 1000);
 }
+
+// ============================================================
+// BOT DE CONSULTAS (oct-2026): el tablero arma un paquete compacto con los
+// mismos números que muestra y lo manda junto con la pregunta a /api/bot,
+// que llama a Claude con la clave de la organización de INGECO. Nada se
+// calcula de nuevo acá: solo se empaqueta lo que ya está en pantalla.
+// ============================================================
+let _botHist = [];      // [{role, content}] de esta sesión
+let _botOcupado = false;
+const BOT_SUGERENCIAS = [
+  '¿Cuánto certificamos este mes?',
+  '¿Qué obra tiene mejor margen?',
+  '¿Cuánto nos debe la Muni?',
+  '¿Cómo viene Gastos de Estructura?',
+];
+const _r0 = n => Math.round(n || 0);
+function _botPaquete() {
+  const P = { generado: new Date().toISOString(), anio: 2026, mesSeleccionado: MES[mesActual] || mesActual, meses: {}, notas: [] };
+  MES_ORDER.forEach(m => {
+    const d = (typeof computeMargenObrasMes === 'function') ? computeMargenObrasMes(m) : null;
+    const prov = (typeof _certProvisionesMes === 'function') ? _certProvisionesMes(m) : { total: 0, items: [] };
+    const ce = COBROS_ESTEBAN[m];
+    const gest = _gestVisible(GASTOS_ESTRUCTURA[m]);
+    const rem = REMITOS_ASFALTO[m];
+    if (!d && !(prov && prov.total) && !ce && !gest && !rem) return;
+    const mes = { nombre: MES[m] || m };
+    if (d && d.rows) {
+      mes.obras = d.rows.map(r => {
+        const its = r.o.items || [];
+        const estado = its.length ? (its.every(i => /cobrad/i.test(i.estado || '')) ? 'cobrado' : (its.some(i => /cobrad/i.test(i.estado || '')) ? 'parcialmente cobrado' : 'a cobrar')) : undefined;
+        return {
+          obra: r.o.cod_obra || r.o.nombre, cliente: r.o.cliente || undefined, tipoContrato: r.o.tipo || undefined,
+          certificado: _r0(r.aCobrar), estadoCert: estado,
+          insumos: _r0(r.insumos), moHormigon: _r0(r.moHormigon) || undefined, moPropia: _r0(r.moObra), alquiler: _r0(r.alquiler),
+          asfaltoCalienteTn: Math.round((r.tnObra || 0) * 10) / 10 || undefined, asfaltoFrioTn: Math.round((r.tnFrioObra || 0) * 10) / 10 || undefined,
+          costoAsfalto: _r0(r.costoAsfObra) || undefined, margen: _r0(r.margen),
+        };
+      });
+      mes.totalObras = mes.obras.reduce((a, o) => { a.certificado += o.certificado; a.insumos += o.insumos; a.moPropia += o.moPropia; a.alquiler += o.alquiler; a.margen += o.margen; return a; }, { certificado: 0, insumos: 0, moPropia: 0, alquiler: 0, margen: 0 });
+    }
+    if (prov && prov.total) mes.provisiones = prov.items.map(i => ({ obra: i.obra, monto: _r0(i.monto), origen: i.esReal ? 'real Esteban' : 'teórica', suma: !i.noSuma }));
+    mes.totalCertificado = _r0((mes.totalObras ? mes.totalObras.certificado : 0) + (prov ? prov.total : 0));
+    try { const u = _resultadoUnidadesMes(m); if (u) mes.resultadoUnidades = { margenObras: _r0(u.margenObras), taller: u.resultTaller == null ? null : _r0(u.resultTaller), planta: u.resultPlanta == null ? null : _r0(u.resultPlanta), gastosEstructura: u.gastosEstructura == null ? null : _r0(u.gastosEstructura) }; } catch (e) {}
+    try { const t = getMOTaller(m).reduce((s, r) => s + r.monto, 0), pl = getMOPlanta(m).reduce((s, r) => s + r.monto, 0); if (t) mes.moTaller = _r0(t); if (pl) mes.moPlanta = _r0(pl); } catch (e) {}
+    if (ce && typeof ce === 'object') {
+      const porObra = {};
+      [['cobrados', 'cobrado'], ['facturados', 'facturado'], ['sinFecha', 'programado'], ['menosProbable', 'menosProbable'], ['noCobrados', 'notaCredito']].forEach(([cat, k]) => (ce[cat] || []).forEach(it => {
+        const o = (typeof _segNorm === 'function' ? _segNorm(it.obra) : it.obra) || '(sin obra)';
+        porObra[o] = porObra[o] || {}; porObra[o][k] = (porObra[o][k] || 0) + _r0(it.importe);
+      }));
+      mes.cobrosEsteban = porObra;
+    }
+    if (gest && gest.total) mes.estructura = _gestCategorias(gest).map(c => ({ categoria: c.categoria, total: _r0(c.total) })).concat([{ categoria: 'TOTAL', total: _r0(gest.total) }]);
+    if (rem && (rem.caliente || rem.frio)) mes.asfaltoDespachadoTn = { caliente: Math.round(rem.caliente || 0), frio: Math.round(rem.frio || 0) };
+    P.meses[m] = mes;
+  });
+  try { const seg = _seguimientoCobros(); if (seg) P.seguimientoCobros = Object.fromEntries(Object.entries(seg.obras).map(([k, v]) => [k, { cobrado: _r0(v.cob), pendiente: _r0(v.pend) }])); } catch (e) {}
+  try { P.saldosContrato = Object.values(_saldosContrato()).map(x => ({ obra: x.nombre, contrato: _r0(x.contrato), certificado: _r0(x.certificado), pendienteCertificar: _r0(x.saldo) })); } catch (e) {}
+  try { P.stockAsfalto = { asfaltoMateriaPrimaTn: Math.round(stockAsfalto || 0), corte: (stockData.fechaBase || '') + ' ' + (stockData.usuarioBase || '') }; } catch (e) {}
+  try { if (typeof runAuditorias === 'function') { runAuditorias(); P.auditorias = AUDIT_RESULTADOS.map(r => ({ titulo: r.titulo, tipo: r.chequeo, monto: _r0(r.monto), grave: !!r.grave, responsable: r.responsable })); } } catch (e) {}
+  return P;
+}
+function botAbrir() {
+  document.body.classList.add('bot-abierto');
+  const box = document.getElementById('bot-msgs');
+  if (box && !box.children.length) {
+    _botAgregar('b', '¡Hola! Preguntame por certificados, insumos, cobros, margen, estructura o stock. Por ejemplo: "¿cuánto gastamos en insumos en Bacheo SMT en septiembre?"');
+    _botSugerencias(true);
+  }
+  setTimeout(() => { const i = document.getElementById('bot-in'); if (i) i.focus(); }, 250);
+}
+function botCerrar() { document.body.classList.remove('bot-abierto'); }
+function _botSugerencias(ver) {
+  const el = document.getElementById('bot-sug'); if (!el) return;
+  el.innerHTML = ver ? BOT_SUGERENCIAS.map(q => `<button type="button" onclick="botPreguntar(this.textContent)">${q}</button>`).join('') : '';
+}
+function _botMd(t) {
+  let h = String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/^\s*[-•]\s+/gm, '• ');
+  return h;
+}
+function _botAgregar(tipo, texto, extra) {
+  const box = document.getElementById('bot-msgs'); if (!box) return null;
+  const el = document.createElement('div'); el.className = 'bot-msg ' + tipo + (extra && extra.err ? ' err' : '');
+  el.innerHTML = tipo === 'b' ? _botMd(texto) : String(texto).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  box.appendChild(el); box.scrollTop = box.scrollHeight; return el;
+}
+function botPreguntar(q) { const i = document.getElementById('bot-in'); if (i) i.value = q; botEnviar(); }
+async function botEnviar(ev) {
+  if (ev) ev.preventDefault();
+  if (_botOcupado) return false;
+  const inp = document.getElementById('bot-in'), btn = document.getElementById('bot-send'), est = document.getElementById('bot-estado');
+  const q = (inp.value || '').trim(); if (!q) return false;
+  inp.value = ''; inp.style.height = 'auto'; _botSugerencias(false);
+  _botAgregar('u', q);
+  _botOcupado = true; btn.disabled = true; if (est) est.textContent = 'Pensando…';
+  const pensando = _botAgregar('b', ''); pensando.innerHTML = '<span class="bot-dots"><i></i><i></i><i></i></span>';
+  try {
+    const paquete = _botPaquete();
+    const r = await fetch('/api/bot', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'ingeco-dashboard' }, body: JSON.stringify({ pregunta: q, historial: _botHist.slice(-10), paquete }) });
+    const j = await r.json().catch(() => ({}));
+    pensando.remove();
+    if (!r.ok || j.status !== 'ok') {
+      const msg = j.code === 'sin_key' ? 'El bot todavía no está configurado: falta cargar la clave de Anthropic en Vercel (variable ANTHROPIC_API_KEY).' : (j.message || 'No pude responder. Probá de nuevo en un momento.');
+      _botAgregar('b', msg, { err: true });
+    } else {
+      _botAgregar('b', j.respuesta);
+      _botHist.push({ role: 'user', content: q }, { role: 'assistant', content: j.respuesta });
+      if (_botHist.length > 20) _botHist = _botHist.slice(-20);
+    }
+  } catch (e) {
+    pensando.remove(); _botAgregar('b', 'Sin conexión con el servidor. Probá de nuevo.', { err: true });
+  }
+  _botOcupado = false; btn.disabled = false; if (est) est.textContent = 'Pregunta sobre los números del tablero'; inp.focus();
+  return false;
+}
+// Globito de invitación la primera vez que se abre el tablero en este navegador
+setTimeout(() => { try { if (!localStorage.getItem('bot_tip_visto')) { const f = document.getElementById('bot-fab'); if (f) { f.classList.add('bot-tip-visible'); setTimeout(() => f.classList.remove('bot-tip-visible'), 6000); } localStorage.setItem('bot_tip_visto', '1'); } } catch (e) {} }, 4000);
 
 </script>
 </body>
