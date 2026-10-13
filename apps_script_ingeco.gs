@@ -425,7 +425,7 @@ function guardarAjusteTablero(tipo, clave, desde, valor, usuario) {
 
 // ============================================================
 // ACCESOS AL TABLERO (oct-2026) — pestaña "Accesos" de la planilla de ajustes
-// Mail | Nombre | Rol | Edita obras | Ve sueldos | Estado | Actualizado | Por | Solicitado
+// Mail | Nombre | Rol | Edita obras | Ve sueldos | Estado | Actualizado | Por | Solicitado | Celular
 // Estado: pendiente (pidió entrar y nadie lo aprobó), aprobado, bloqueado.
 // Quién puede aprobar lo decide Vercel (Adrián y María); acá solo se guarda.
 // ============================================================
@@ -438,8 +438,10 @@ function _accesosSheet() {
   let sh = ss.getSheetByName(ACCESOS_SHEET);
   if (!sh) {
     sh = ss.insertSheet(ACCESOS_SHEET);
-    sh.appendRow(['Mail', 'Nombre', 'Rol', 'Edita obras', 'Ve sueldos', 'Estado', 'Actualizado', 'Por', 'Solicitado']);
-    sh.getRange(1, 1, 1, 9).setFontWeight('bold');
+    sh.appendRow(['Mail', 'Nombre', 'Rol', 'Edita obras', 'Ve sueldos', 'Estado', 'Actualizado', 'Por', 'Solicitado', 'Celular']);
+    sh.getRange(1, 1, 1, 10).setFontWeight('bold');
+  } else if (String(sh.getRange(1, 10).getValue() || '').trim() === '') {
+    sh.getRange(1, 10).setValue('Celular').setFontWeight('bold'); // planillas creadas antes de la columna
   }
   return sh;
 }
@@ -455,7 +457,7 @@ function leerAccesos() {
     if (!mail) continue;
     out.push({ mail: mail, nombre: String(r[1] || '').trim(), rol: String(r[2] || '').trim().toLowerCase(),
       editaObras: _b(r[3]), veSueldos: _b(r[4]), estado: String(r[5] || '').trim().toLowerCase() || 'pendiente',
-      actualizado: _d(r[6]), por: String(r[7] || ''), solicitado: _d(r[8]), fila: i + 1 });
+      actualizado: _d(r[6]), por: String(r[7] || ''), solicitado: _d(r[8]), celular: String(r[9] || '').trim(), fila: i + 1 });
   }
   return out;
 }
@@ -474,7 +476,7 @@ function operarAccesos(body) {
     const existente = lista.find(function(a) { return a.mail === mail; });
     if (body.op === 'solicitar') {
       if (existente) return { status: 'ok', estado: existente.estado, nuevo: false };
-      sh.appendRow([mail, seguro(String(body.nombre || '').slice(0, 80)), '', '', '', 'pendiente', '', '', new Date()]);
+      sh.appendRow([mail, seguro(String(body.nombre || '').slice(0, 80)), '', '', '', 'pendiente', '', '', new Date(), '']);
       return { status: 'ok', estado: 'pendiente', nuevo: true };
     }
     if (body.op === 'guardar') {
@@ -485,7 +487,8 @@ function operarAccesos(body) {
       const fila = [mail, seguro(String(body.nombre || (existente ? existente.nombre : '')).slice(0, 80)), rol,
         body.editaObras === true || body.editaObras === 'true' ? 'si' : 'no',
         body.veSueldos === true || body.veSueldos === 'true' ? 'si' : 'no',
-        estado, new Date(), seguro(String(body.usuario || '').slice(0, 100)), existente && existente.solicitado ? new Date(existente.solicitado) : ''];
+        estado, new Date(), seguro(String(body.usuario || '').slice(0, 100)), existente && existente.solicitado ? new Date(existente.solicitado) : '',
+        seguro(String(body.celular == null ? (existente ? existente.celular : '') : body.celular).replace(/[^\d+ ()-]/g, '').slice(0, 30))];
       if (existente) sh.getRange(existente.fila, 1, 1, fila.length).setValues([fila]);
       else sh.appendRow(fila);
       return { status: 'ok', estado: estado };

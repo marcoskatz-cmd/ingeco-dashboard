@@ -781,6 +781,12 @@
   .bot-msg.b { align-self: flex-start; background: #fff; color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; box-shadow: var(--sh-sm); }
   .bot-msg.b.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
   .bot-msg.b strong { color: var(--primary); }
+  .bot-acciones { margin-top: 7px; padding-top: 6px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .bot-acciones > button { border: 1px solid var(--border); background: #f6f8fb; color: var(--primary); font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 14px; cursor: pointer; }
+  .bot-acciones > button:hover { background: #e8f5ee; border-color: #25d366; color: #128c7e; }
+  .bot-wa-menu { width: 100%; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; animation: bot-in .18s var(--ease-out); }
+  .bot-wa-menu button { border: 1px solid #bfe8cf; background: #e8f5ee; color: #128c7e; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 14px; cursor: pointer; }
+  .bot-wa-menu button:hover { background: #25d366; color: #fff; }
   @keyframes bot-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .bot-dots { display: inline-flex; gap: 4px; align-items: center; height: 14px; }
   .bot-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: bot-dot 1.1s infinite; }
@@ -1849,7 +1855,7 @@
       <button class="acc-btn" onclick="accesosNuevo()">＋ Agregar mail</button>
     </div>
     <div id="acc-lista"></div>
-    <div class="nota-fuente" style="margin-top:12px;">Rol <strong>Directorio</strong>: ve todo el tablero, incluida mano de obra. <strong>Administración</strong>: no ve mano de obra ni sueldos, ni Taller. <strong>Edita obras</strong>: puede dar de alta obras y cargar certificados. <strong>Ve sueldos</strong>: ve los sueldos del personal mensual en Gastos de Estructura. Los datos se guardan en la planilla "Ajustes del tablero", pestaña Accesos. Nota: mientras la app de Google esté en modo prueba, cada cuenta nueva también hay que agregarla en Google Cloud → Google Auth Platform → Público → usuarios de prueba.</div>
+    <div class="nota-fuente" style="margin-top:12px;">Rol <strong>Directorio</strong>: ve todo el tablero, incluida mano de obra. <strong>Administración</strong>: no ve mano de obra ni sueldos, ni Taller. <strong>Edita obras</strong>: puede dar de alta obras y cargar certificados. <strong>Ve sueldos</strong>: ve los sueldos del personal mensual en Gastos de Estructura. <strong>Celular</strong>: con código de área, sin 0 ni 15 (ej. 381 5123456); lo usa el atajo "📲 WhatsApp" de INGEBOT para mandarle una respuesta a esa persona. Los datos se guardan en la planilla "Ajustes del tablero", pestaña Accesos. Nota: mientras la app de Google esté en modo prueba, cada cuenta nueva también hay que agregarla en Google Cloud → Google Auth Platform → Público → usuarios de prueba.</div>
   </div>
 </div>
 
@@ -12236,6 +12242,7 @@ function accesosRender() {
     return `<tr class="${a.estado === 'pendiente' ? 'pend' : a.estado === 'bloqueado' ? 'bloq' : ''}" data-i="${i}">
       <td style="white-space:nowrap;"><strong>${_esc(a.mail)}</strong>${a.adminAccesos ? '<br><span style="font-size:10px;color:var(--muted);">administra accesos</span>' : (a.origen === 'semilla' ? '<br><span style="font-size:10px;color:var(--muted);">semilla del código</span>' : '')}${a.solicitado ? `<br><span style="font-size:10px;color:#92400e;">pidió acceso el ${fecha(a.solicitado)}</span>` : ''}</td>
       <td><input type="text" value="${_esc(a.nombre || '')}" placeholder="Nombre" onchange="_accSet(${i},'nombre',this.value)"></td>
+      <td><input type="text" value="${_esc(a.celular || '')}" placeholder="381 5123456" inputmode="tel" title="Celular sin 0 ni 15, con código de área (ej. 381 5123456). Se usa para el atajo de WhatsApp de INGEBOT." onchange="_accSet(${i},'celular',this.value)"></td>
       <td><select onchange="_accSet(${i},'rol',this.value)"><option value="" ${!a.rol ? 'selected' : ''}>— elegir —</option><option value="directorio" ${a.rol === 'directorio' ? 'selected' : ''}>Directorio</option><option value="administracion" ${a.rol === 'administracion' ? 'selected' : ''}>Administración</option></select></td>
       <td style="text-align:center;"><input type="checkbox" ${a.editaObras ? 'checked' : ''} ${a.adminAccesos ? 'disabled' : ''} onchange="_accSet(${i},'editaObras',this.checked)"></td>
       <td style="text-align:center;"><input type="checkbox" ${a.veSueldos ? 'checked' : ''} ${a.adminAccesos ? 'disabled' : ''} onchange="_accSet(${i},'veSueldos',this.checked)"></td>
@@ -12245,7 +12252,7 @@ function accesosRender() {
         ${bloqueable && a.estado !== 'bloqueado' ? `<button class="acc-btn mal" onclick="accesosGuardar(${i},'bloqueado')">Bloquear</button>` : ''}
       </td></tr>`;
   };
-  const thead = `<thead><tr><th>Cuenta</th><th>Nombre</th><th>Rol</th><th style="text-align:center;">Edita obras</th><th style="text-align:center;">Ve sueldos</th><th>Estado</th><th></th></tr></thead>`;
+  const thead = `<thead><tr><th>Cuenta</th><th>Nombre</th><th>Celular</th><th>Rol</th><th style="text-align:center;">Edita obras</th><th style="text-align:center;">Ve sueldos</th><th>Estado</th><th></th></tr></thead>`;
   if (pend) pend.innerHTML = nPend ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;margin-bottom:6px;"><div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:6px;">⏳ ${nPend} pedido${nPend !== 1 ? 's' : ''} de acceso pendiente${nPend !== 1 ? 's' : ''}: elegí rol y permisos y tocá Aprobar</div><div style="overflow-x:auto;"><table class="acc-tabla">${thead}<tbody>${pendientes.map(a => fila(a, _accLista.indexOf(a))).join('')}</tbody></table></div></div>` : '';
   if (lista) lista.innerHTML = `<div style="overflow-x:auto;"><table class="acc-tabla">${thead}<tbody>${_accLista.map((a, i) => a.estado === 'pendiente' ? '' : fila(a, i)).join('')}</tbody></table></div>`;
 }
@@ -12265,7 +12272,7 @@ async function accesosGuardar(i, estado) {
   const est = document.getElementById('acc-estado'); if (est) est.textContent = 'Guardando…';
   try {
     const r = await fetch('/api/accesos', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'ingeco-dashboard' },
-      body: JSON.stringify({ mail: a.mail, nombre: a.nombre || '', rol: a.rol || '', editaObras: !!a.editaObras, veSueldos: !!a.veSueldos, estado }) });
+      body: JSON.stringify({ mail: a.mail, nombre: a.nombre || '', celular: a.celular || '', rol: a.rol || '', editaObras: !!a.editaObras, veSueldos: !!a.veSueldos, estado }) });
     const j = await r.json();
     if (!r.ok || j.status !== 'ok') throw new Error(j.message || 'Error al guardar');
     _accLista = j.accesos || _accLista; accesosRender();
@@ -12359,7 +12366,48 @@ function _botAgregar(tipo, texto, extra) {
   const box = document.getElementById('bot-msgs'); if (!box) return null;
   const el = document.createElement('div'); el.className = 'bot-msg ' + tipo + (extra && extra.err ? ' err' : '');
   el.innerHTML = tipo === 'b' ? _botMd(texto) : String(texto).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  if (tipo === 'b' && extra && extra.pregunta) {
+    // Atajo: mandar pregunta + respuesta por WhatsApp a alguien del equipo
+    const idx = _botWa.push({ pregunta: extra.pregunta, respuesta: texto }) - 1;
+    el.insertAdjacentHTML('beforeend', `<div class="bot-acciones"><button type="button" onclick="botWhatsApp(${idx}, this)" title="Mandar esta respuesta por WhatsApp">📲 WhatsApp</button></div>`);
+  }
   box.appendChild(el); box.scrollTop = box.scrollHeight; return el;
+}
+// ── Atajo WhatsApp: elegir destinatario (celulares cargados en Accesos) ──
+const _botWa = [];
+let _botContactos = null;
+async function _botCargarContactos() {
+  if (_botContactos) return _botContactos;
+  try { const r = await fetch('/api/accesos?contactos=1', { cache: 'no-store' }); const j = await r.json(); _botContactos = (j.contactos || []); } catch (e) { _botContactos = []; }
+  return _botContactos;
+}
+function _waNumero(cel) {
+  let d = String(cel || '').replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('0')) d = d.slice(1);
+  if (d.startsWith('54')) { if (!d.startsWith('549') && d.length <= 12) d = '549' + d.slice(2); return d; }
+  // "381 15 5123456" → sacar el 15 después del código de área (2 a 4 dígitos)
+  if (d.length === 12) for (const area of [2, 3, 4]) { if (d.slice(area, area + 2) === '15') { d = d.slice(0, area) + d.slice(area + 2); break; } }
+  return '549' + d; // argentina: 549 + área + número (sin 0 ni 15)
+}
+async function botWhatsApp(idx, btn) {
+  const m = _botWa[idx]; if (!m) return;
+  const contactos = await _botCargarContactos();
+  const viejo = btn.parentElement.querySelector('.bot-wa-menu'); if (viejo) { viejo.remove(); return; }
+  const opciones = contactos.map((c, i) => `<button type="button" onclick="botWhatsAppEnviar(${idx}, ${i})">${_esc(c.nombre)}</button>`).join('');
+  btn.parentElement.insertAdjacentHTML('beforeend', `<div class="bot-wa-menu">
+    <div style="font-size:10.5px;color:var(--muted);margin-bottom:4px;">${contactos.length ? 'Mandar a:' : 'No hay celulares cargados (se cargan en Accesos).'}</div>
+    ${opciones}<button type="button" onclick="botWhatsAppEnviar(${idx}, -1)">Otro número…</button>
+  </div>`);
+}
+function botWhatsAppEnviar(idx, i) {
+  const m = _botWa[idx]; if (!m) return;
+  let cel = '', nombre = '';
+  if (i >= 0) { const c = (_botContactos || [])[i]; if (!c) return; cel = c.celular; nombre = c.nombre; }
+  else { cel = prompt('Celular (con código de área, sin 0 ni 15):') || ''; if (!cel.trim()) return; }
+  const texto = (nombre ? 'Hola ' + nombre + ', ' : 'Hola, ') + 'te paso esto del tablero INGECO:\n\n*Pregunta:* ' + m.pregunta + '\n\n*INGEBOT:* ' + String(m.respuesta || '').replace(/\*\*/g, '*');
+  window.open('https://wa.me/' + _waNumero(cel) + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+  document.querySelectorAll('.bot-wa-menu').forEach(x => x.remove());
 }
 function botPreguntar(q) { const i = document.getElementById('bot-in'); if (i) i.value = q; botEnviar(); }
 async function botEnviar(ev) {
@@ -12380,7 +12428,7 @@ async function botEnviar(ev) {
       const msg = j.code === 'sin_key' ? 'El bot todavía no está configurado: falta cargar la clave de Anthropic en Vercel (variable ANTHROPIC_API_KEY).' : (j.message || 'No pude responder. Probá de nuevo en un momento.');
       _botAgregar('b', msg, { err: true });
     } else {
-      _botAgregar('b', j.respuesta);
+      _botAgregar('b', j.respuesta, { pregunta: q });
       _botHist.push({ role: 'user', content: q }, { role: 'assistant', content: j.respuesta });
       if (_botHist.length > 20) _botHist = _botHist.slice(-20);
     }

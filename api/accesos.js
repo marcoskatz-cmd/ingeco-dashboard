@@ -3,13 +3,17 @@
 // POST → { mail, nombre, rol, editaObras, veSueldos, estado } guarda en la
 //        planilla "Ajustes del tablero" (pestaña Accesos) vía Apps Script.
 import { sessionFromRequestHeaders, ADMIN_ACCESOS } from '../lib/session.js';
-import { listarAccesos, operarAccesos } from '../lib/accesos.js';
+import { listarAccesos, operarAccesos, listarContactos } from '../lib/accesos.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   try {
     const session = await sessionFromRequestHeaders(req.headers);
     if (!session) return res.status(401).json({ status: 'error', message: 'No autorizado' });
+    // Contactos (nombre + celular) para el atajo de WhatsApp: cualquier usuario
+    if (req.method === 'GET' && req.query && req.query.contactos === '1') {
+      return res.status(200).json({ status: 'ok', contactos: await listarContactos() });
+    }
     if (!ADMIN_ACCESOS.has(session.email)) return res.status(403).json({ status: 'error', message: 'Solo Adrián y María administran accesos' });
 
     if (req.method === 'GET') {
@@ -31,6 +35,7 @@ export default async function handler(req, res) {
     const r = await operarAccesos({
       op: 'guardar', mail, nombre: String(b.nombre || '').slice(0, 80), rol, estado,
       editaObras: b.editaObras === true, veSueldos: b.veSueldos === true, usuario: session.email,
+      celular: String(b.celular || '').replace(/[^\d+ ()-]/g, '').slice(0, 30),
     });
     if (r.status !== 'ok') return res.status(502).json(r);
     const lista = await listarAccesos();
