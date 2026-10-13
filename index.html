@@ -12178,7 +12178,9 @@ const BOT_SUGERENCIAS = [
 ];
 const _r0 = n => Math.round(n || 0);
 function _botPaquete() {
-  const P = { generado: new Date().toISOString(), anio: 2026, mesSeleccionado: MES[mesActual] || mesActual, meses: {}, notas: [] };
+  // Sin hora de generación: el paquete tiene que ser idéntico entre preguntas
+  // para que el caché de prompt se reutilice (cambia solo cuando cambian los datos).
+  const P = { anio: 2026, datosActualizados: (document.getElementById('last-update') || {}).textContent || '', mesSeleccionado: MES[mesActual] || mesActual, meses: {}, notas: [] };
   MES_ORDER.forEach(m => {
     const d = (typeof computeMargenObrasMes === 'function') ? computeMargenObrasMes(m) : null;
     const prov = (typeof _certProvisionesMes === 'function') ? _certProvisionesMes(m) : { total: 0, items: [] };
