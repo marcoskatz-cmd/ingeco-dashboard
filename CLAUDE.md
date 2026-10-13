@@ -111,9 +111,9 @@ Desde sep-2026 el archivo mensual de TANGO ("MM - YYYY QUINCENAS") trae una hoja
 
 La col H de cada pestaña mensual trae el código del Maestro pero **no tiene encabezado**; `leerCobrosEsteban` la toma como la columna que sigue a "FECHA REAL DE COBRO" si no encuentra una con "COD". En el front, `_normalizarObrasEsteban` prioriza ese código cuando difiere del nombre de obra (ej. "Obra SAT" → "SAT - Adicionales"); si es igual, aplica las reglas por concepto de `SPLIT_OBRA_ESTEBAN`.
 
-## Bot de consultas (oct-2026)
+## INGEBOT — bot de consultas (oct-2026)
 
-Robot flotante abajo a la derecha (`#bot-fab`) que abre un chat (`#bot-panel`). El front arma `_botPaquete()` con los mismos números que muestra el tablero (por mes: obras con certificado/insumos/MO/alquiler/asfalto/margen, provisiones, cobros de Esteban por obra, estructura por categoría, resultado de unidades; más seguimiento de cobros, saldos de contrato, stock y auditorías; ~40 KB) y lo manda con la pregunta y el historial corto a `POST /api/bot` (header anti-CSRF). `api/bot.js` exige sesión, recorta el paquete según permisos (MO solo rol directorio, sueldos solo `VE_SUELDOS`), llama a Claude (`claude-opus-5-5`, SDK `@anthropic-ai/sdk`, paquete como bloque de system cacheado) y devuelve texto. La clave va en Vercel como `ANTHROPIC_API_KEY` (organización de Marcos; sin la variable el bot responde "sin configurar"). No toca el `.gs`.
+Se llama INGEBOT. Robot flotante abajo a la derecha (`#bot-fab`) que abre un chat (`#bot-panel`). El front arma `_botPaquete()` con los mismos números que muestra el tablero (por mes: obras con certificado/insumos/MO/alquiler/asfalto/margen, provisiones, cobros de Esteban por obra, estructura por categoría, resultado de unidades; más seguimiento de cobros, saldos de contrato, stock y auditorías; ~40 KB) y lo manda con la pregunta y el historial corto a `POST /api/bot` (header anti-CSRF). `api/bot.js` exige sesión, recorta el paquete según permisos (MO solo rol directorio, sueldos solo `VE_SUELDOS`), llama a Claude (`claude-opus-5-5`, SDK `@anthropic-ai/sdk`, paquete como bloque de system cacheado) y devuelve texto. La clave va en Vercel como `ANTHROPIC_API_KEY` (organización de Marcos; sin la variable el bot responde "sin configurar"). No toca el `.gs`.
 
 ## Otras cosas no obvias del dominio
 

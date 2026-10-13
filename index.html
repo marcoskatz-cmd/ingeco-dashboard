@@ -852,7 +852,7 @@
 <!-- PANEL LATERAL -->
 <div class="overlay" id="overlay" onclick="closePanel()"></div>
 <!-- ===== Bot de consultas ===== -->
-<button id="bot-fab" onclick="botAbrir()" title="Preguntale al tablero" aria-label="Abrir el asistente del tablero">
+<button id="bot-fab" onclick="botAbrir()" title="Preguntale a INGEBOT" aria-label="Abrir INGEBOT">
   <svg class="bot-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <line x1="24" y1="10" x2="24" y2="5" stroke="#e8a100" stroke-width="2.2" stroke-linecap="round"/>
   <circle class="bot-antena-luz" cx="24" cy="4.2" r="2.6" fill="#ffd166"/>
@@ -868,9 +868,9 @@
   <g class="bot-brazo"><rect x="8" y="33" width="7" height="3.4" rx="1.7" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1"/></g>
   <rect x="33" y="33" width="7" height="3.4" rx="1.7" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1"/>
 </svg>
-  <span class="bot-tip">Preguntale al tablero</span>
+  <span class="bot-tip">Preguntale a INGEBOT</span>
 </button>
-<div id="bot-panel" role="dialog" aria-label="Asistente del tablero">
+<div id="bot-panel" role="dialog" aria-label="INGEBOT">
   <div id="bot-head">
     <svg class="bot-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <line x1="24" y1="10" x2="24" y2="5" stroke="#e8a100" stroke-width="2.2" stroke-linecap="round"/>
@@ -887,7 +887,7 @@
   <g class="bot-brazo"><rect x="8" y="33" width="7" height="3.4" rx="1.7" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1"/></g>
   <rect x="33" y="33" width="7" height="3.4" rx="1.7" fill="#f4f7fb" stroke="#dfe6ee" stroke-width="1"/>
 </svg>
-    <div><div class="t">Asistente INGECO</div><div class="s" id="bot-estado">Pregunta sobre los números del tablero</div></div>
+    <div><div class="t">INGEBOT</div><div class="s" id="bot-estado">Pregunta sobre los números del tablero</div></div>
     <button type="button" onclick="botCerrar()" title="Cerrar" aria-label="Cerrar">✕</button>
   </div>
   <div id="bot-msgs"></div>
@@ -12231,7 +12231,7 @@ function botAbrir() {
   document.body.classList.add('bot-abierto');
   const box = document.getElementById('bot-msgs');
   if (box && !box.children.length) {
-    _botAgregar('b', '¡Hola! Preguntame por certificados, insumos, cobros, margen, estructura o stock. Por ejemplo: "¿cuánto gastamos en insumos en Bacheo SMT en septiembre?"');
+    _botAgregar('b', '¡Hola! Soy INGEBOT. Preguntame por certificados, insumos, cobros, margen, estructura o stock. Por ejemplo: "¿cuánto gastamos en insumos en Bacheo SMT en septiembre?"');
     _botSugerencias(true);
   }
   setTimeout(() => { const i = document.getElementById('bot-in'); if (i) i.focus(); }, 250);
