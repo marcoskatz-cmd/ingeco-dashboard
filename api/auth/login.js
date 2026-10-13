@@ -3,7 +3,8 @@
 // allowlist, emite la cookie de sesión. Nunca se confía en nada que mande
 // el cliente salvo la firma de Google.
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { roleFor, signSession, sessionCookie } from '../../lib/session.js';
+import { signSession, sessionCookie } from '../../lib/session.js';
+import { resolverUsuario, operarAccesos } from '../../lib/accesos.js';
 
 const GOOGLE_JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 
@@ -49,13 +50,17 @@ export default async function handler(req, res) {
   const email = String(payload.email || '').trim().toLowerCase();
   if (!email || payload.email_verified !== true) return res.status(401).json({ status: 'error', message: 'Mail sin verificar' });
 
-  const role = roleFor(email);
-  if (!role) {
-    // Respuesta uniforme: no revela qué mails sí están habilitados
-    return res.status(403).json({ status: 'error', message: 'Esta cuenta no tiene acceso al tablero', email });
+  const u = await resolverUsuario(email);
+  if (!u || u.estado !== 'aprobado') {
+    if (u && u.estado === 'bloqueado') return res.status(403).json({ status: 'error', code: 'bloqueado', message: 'Esta cuenta está bloqueada', email });
+    // Sin acceso: queda registrado como pedido pendiente para que Adrián o
+    // María lo aprueben desde la pestaña Accesos.
+    let registrado = false;
+    try { const r = await operarAccesos({ op: 'solicitar', mail: email, nombre: String(payload.name || '').slice(0, 80) }); registrado = r && r.status === 'ok'; } catch (e) {}
+    return res.status(403).json({ status: 'error', code: 'pendiente', registrado, message: 'Esta cuenta no tiene acceso al tablero', email });
   }
 
-  const token = await signSession(email, role);
+  const token = await signSession(email, u.role, { editaObras: u.editaObras, veSueldos: u.veSueldos, nombre: u.nombre, dyn: u.origen === 'planilla' });
   res.setHeader('Set-Cookie', sessionCookie(token));
-  res.status(200).json({ status: 'ok', email, role });
+  res.status(200).json({ status: 'ok', email, role: u.role });
 }

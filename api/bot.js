@@ -5,7 +5,7 @@
 // vuelve como texto. Exige sesión; lo que el usuario no puede ver en el
 // tablero (sueldos, MO) se saca del paquete antes de llamar al modelo.
 import Anthropic from '@anthropic-ai/sdk';
-import { sessionFromRequestHeaders, VE_SUELDOS } from '../lib/session.js';
+import { sessionFromRequestHeaders } from '../lib/session.js';
 
 const MODEL = 'claude-opus-5-5';
 const MAX_PAQUETE = 900 * 1024; // bytes de JSON
@@ -103,7 +103,7 @@ export default async function handler(req, res) {
 // personal mensual (solo VE_SUELDOS) y mano de obra (solo rol directorio).
 function _recortarPorPermisos(p, session) {
   const out = JSON.parse(JSON.stringify(p));
-  const veSueldos = VE_SUELDOS.has(session.email);
+  const veSueldos = !!session.veSueldos;
   const veMO = session.role === 'directorio';
   const meses = out.meses && typeof out.meses === 'object' ? out.meses : {};
   for (const m of Object.keys(meses)) {

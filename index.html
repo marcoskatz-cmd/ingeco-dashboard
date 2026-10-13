@@ -631,6 +631,20 @@
   /* CONTROL DE ACCESO POR ROL — admin no ve sueldos/MO */
   body.role-admin [data-restrict="sueldos"] { display: none !important; }
   body:not(.ve-sueldos) .solo-ve-sueldos { display: none !important; }
+  body:not(.admin-accesos) .solo-admin-accesos { display: none !important; }
+  /* Pestaña Accesos */
+  .acc-tabla { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .acc-tabla th { text-align: left; font-size: 11px; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 2px solid var(--border); white-space: nowrap; }
+  .acc-tabla td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .acc-tabla tr.pend { background: #fffbeb; }
+  .acc-tabla tr.bloq { opacity: .6; }
+  .acc-tabla input[type=text], .acc-tabla select { border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12.5px; font-family: inherit; background: #fff; width: 100%; min-width: 120px; }
+  .acc-tabla input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+  .acc-estado { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
+  .acc-estado.aprobado { background: #dcfce7; color: #166534; } .acc-estado.pendiente { background: #fef3c7; color: #92400e; } .acc-estado.bloqueado { background: #fee2e2; color: #991b1b; }
+  .acc-btn { border: 1.5px solid var(--border); background: #fff; color: var(--primary); font-size: 11.5px; font-weight: 700; padding: 6px 10px; border-radius: 8px; cursor: pointer; white-space: nowrap; transition: background .15s; }
+  .acc-btn:hover { background: #eef2f7; } .acc-btn.ok { background: var(--pos); border-color: var(--pos); color: #fff; } .acc-btn.ok:hover { filter: brightness(1.05); }
+  .acc-btn.mal { color: var(--neg); border-color: #fecaca; } .acc-btn:disabled { opacity: .5; cursor: default; }
   /* Oculta la columna "MO (prorrateada)" (4ta) en la tabla de contribución por obra */
   body.role-admin #tabla-resumen-obra th:nth-child(4),
   body.role-admin #tabla-resumen-obra td:nth-child(4):not([colspan]) { display: none !important; }
@@ -784,8 +798,19 @@
   #bot-send:disabled { opacity: .5; cursor: default; transform: none; }
   #bot-foot { font-size: 10px; color: var(--muted); text-align: center; padding: 0 12px 8px; background: #fff; }
   @media (max-width: 600px) {
-    #bot-panel { right: 0; bottom: 0; width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
-    #bot-fab { right: 14px; bottom: 14px; width: 56px; height: 56px; } #bot-fab svg { width: 36px; height: 36px; } #bot-fab .bot-tip { display: none; }
+    /* Celular: el chat ocupa toda la pantalla (altura dinámica para que el
+       teclado no tape el input) y respeta el notch / barra inferior. */
+    #bot-panel { right: 0; bottom: 0; width: 100vw; max-width: 100vw; height: 100vh; height: 100dvh; max-height: 100dvh; border-radius: 0; border: none;
+      padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); transform: translateY(100%); }
+    body.bot-abierto { overflow: hidden; }
+    #bot-head { padding: 12px 14px; } #bot-head button { width: 38px; height: 38px; font-size: 18px; }
+    #bot-msgs { padding: 12px 12px 6px; } .bot-msg { max-width: 92%; font-size: 14px; }
+    #bot-sug { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 6px 12px 8px; }
+    #bot-sug::-webkit-scrollbar { height: 0; } #bot-sug button { flex: 0 0 auto; padding: 8px 12px; font-size: 12px; }
+    #bot-in { font-size: 16px; padding: 10px 12px; } /* 16px: iOS no hace zoom al enfocar */
+    #bot-send { width: 48px; height: 44px; align-self: flex-end; } #bot-form { padding: 8px 10px; gap: 6px; }
+    #bot-foot { padding-bottom: 6px; }
+    #bot-fab { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); width: 56px; height: 56px; } #bot-fab svg { width: 36px; height: 36px; } #bot-fab .bot-tip { display: none; }
   }
   @media (prefers-reduced-motion: reduce) { #bot-fab, .bot-svg .bot-eye, .bot-svg .bot-brazo, .bot-svg .bot-antena-luz, .bot-msg { animation: none !important; } }
 </style>
@@ -844,6 +869,7 @@
   <button class="tab-btn" onclick="openTab('manual')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h7M8 11h7"/></svg>Manual de tareas/instructivos</button>
   <button class="tab-btn" onclick="openTab('fuentes')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7" ry="2.8"/><path d="M5 5.5v6c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-6"/><path d="M5 11.5v6c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-6"/></svg>Fuentes de Datos</button>
   <button class="tab-btn" onclick="openTab('auditorias')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.7-8 9-4.8-1.3-8-4.5-8-9V6z"/><path d="M12 8v4"/><path d="M12 15.5h.01"/></svg>Auditorías<span id="audit-nav-badge" style="display:none;margin-left:auto;background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;"></span></button>
+  <button class="tab-btn solo-admin-accesos" id="btn-accesos" onclick="openTab('accesos')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 11l2 2 4-4"/></svg>Accesos<span id="accesos-nav-badge" style="display:none;margin-left:auto;background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;"></span></button>
 </nav>
 
 <!-- CONTENT -->
@@ -1811,6 +1837,22 @@
 
 <!-- ================================================================ -->
 <!-- TAB: GASTOS DE ESTRUCTURA -->
+<div class="tab-panel solo-admin-accesos" id="tab-accesos">
+  <div class="section">
+    <div class="section-title">Accesos al tablero <span class="badge real" style="margin-left:8px;">Solo Adrián y María</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;">Quien intenta entrar con una cuenta de Google que no está habilitada queda como <strong>pendiente</strong>. Acá lo aprobás, le ponés rol y permisos, o lo bloqueás. Los cambios valen desde el próximo ingreso de esa persona (las sesiones duran 12 h). Para que Google deje entrar a una cuenta nueva, además tiene que estar como usuario de prueba de la app en Google Cloud (ver nota al pie).</div>
+    <div id="acc-estado" style="font-size:12px;color:var(--muted);margin-bottom:10px;">Cargando…</div>
+    <div id="acc-pendientes"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 8px;">
+      <span class="section-title" style="margin:0;">Usuarios</span>
+      <button class="acc-btn" onclick="accesosCargar()">↻ Recargar</button>
+      <button class="acc-btn" onclick="accesosNuevo()">＋ Agregar mail</button>
+    </div>
+    <div id="acc-lista"></div>
+    <div class="nota-fuente" style="margin-top:12px;">Rol <strong>Directorio</strong>: ve todo el tablero, incluida mano de obra. <strong>Administración</strong>: no ve mano de obra ni sueldos, ni Taller. <strong>Edita obras</strong>: puede dar de alta obras y cargar certificados. <strong>Ve sueldos</strong>: ve los sueldos del personal mensual en Gastos de Estructura. Los datos se guardan en la planilla "Ajustes del tablero", pestaña Accesos. Nota: mientras la app de Google esté en modo prueba, cada cuenta nueva también hay que agregarla en Google Cloud → Google Auth Platform → Público → usuarios de prueba.</div>
+  </div>
+</div>
+
 <div class="tab-panel" id="tab-gastos-estructura">
   <div class="section">
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
@@ -12051,6 +12093,8 @@ async function cerrarSesion() {
     applyRole(me.role, me.email);
     document.body.classList.toggle('edita-obras', !!me.editaObras);
     document.body.classList.toggle('ve-sueldos', !!me.veSueldos);
+    document.body.classList.toggle('admin-accesos', !!me.adminAccesos);
+    if (me.adminAccesos) setTimeout(accesosCargar, 1500);
     const saludoEl = document.getElementById('saludo-usuario');
     if (saludoEl && me.nombre) { const h = new Date().getHours(); saludoEl.textContent = (h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches') + ', ' + me.nombre; }
     document.body.classList.add('authed');
@@ -12162,6 +12206,70 @@ if (APPS_SCRIPT_URL) {
   // Auto-refresco: el Apps Script regenera el caché cada hora (trigger
   // horario); si la pestaña queda abierta, el tablero lo recarga solo.
   setInterval(function() { cargarCache(true); }, 60 * 60 * 1000);
+}
+
+// ============================================================
+// ACCESOS (oct-2026): pestaña solo para ADMIN_ACCESOS (Adrián y María).
+// Lista = semilla del código + planilla "Ajustes del tablero" / Accesos.
+// ============================================================
+let _accLista = [];
+async function accesosCargar() {
+  const est = document.getElementById('acc-estado'); if (!est) return;
+  est.textContent = 'Cargando…';
+  try {
+    const r = await fetch('/api/accesos', { cache: 'no-store' });
+    const j = await r.json();
+    if (!r.ok || j.status !== 'ok') throw new Error(j.message || 'Error');
+    _accLista = j.accesos || [];
+    accesosRender();
+  } catch (e) { est.textContent = 'No se pudo cargar la lista: ' + (e.message || e); }
+}
+function accesosRender() {
+  const est = document.getElementById('acc-estado'), pend = document.getElementById('acc-pendientes'), lista = document.getElementById('acc-lista'), badge = document.getElementById('accesos-nav-badge');
+  const pendientes = _accLista.filter(a => a.estado === 'pendiente');
+  const nPend = pendientes.length;
+  if (badge) { badge.style.display = nPend ? '' : 'none'; badge.textContent = nPend; }
+  if (est) est.textContent = `${_accLista.length} cuentas · ${_accLista.filter(a => a.estado === 'aprobado').length} con acceso · ${nPend} pendiente${nPend !== 1 ? 's' : ''}`;
+  const fecha = s => { if (!s) return ''; const d = new Date(s); return isNaN(d) ? String(s) : d.toLocaleDateString('es-AR'); };
+  const fila = (a, i) => {
+    const bloqueable = !a.adminAccesos;
+    return `<tr class="${a.estado === 'pendiente' ? 'pend' : a.estado === 'bloqueado' ? 'bloq' : ''}" data-i="${i}">
+      <td style="white-space:nowrap;"><strong>${_esc(a.mail)}</strong>${a.adminAccesos ? '<br><span style="font-size:10px;color:var(--muted);">administra accesos</span>' : (a.origen === 'semilla' ? '<br><span style="font-size:10px;color:var(--muted);">semilla del código</span>' : '')}${a.solicitado ? `<br><span style="font-size:10px;color:#92400e;">pidió acceso el ${fecha(a.solicitado)}</span>` : ''}</td>
+      <td><input type="text" value="${_esc(a.nombre || '')}" placeholder="Nombre" onchange="_accSet(${i},'nombre',this.value)"></td>
+      <td><select onchange="_accSet(${i},'rol',this.value)"><option value="" ${!a.rol ? 'selected' : ''}>— elegir —</option><option value="directorio" ${a.rol === 'directorio' ? 'selected' : ''}>Directorio</option><option value="administracion" ${a.rol === 'administracion' ? 'selected' : ''}>Administración</option></select></td>
+      <td style="text-align:center;"><input type="checkbox" ${a.editaObras ? 'checked' : ''} ${a.adminAccesos ? 'disabled' : ''} onchange="_accSet(${i},'editaObras',this.checked)"></td>
+      <td style="text-align:center;"><input type="checkbox" ${a.veSueldos ? 'checked' : ''} ${a.adminAccesos ? 'disabled' : ''} onchange="_accSet(${i},'veSueldos',this.checked)"></td>
+      <td><span class="acc-estado ${a.estado}">${a.estado}</span>${a.actualizado ? `<br><span style="font-size:10px;color:var(--muted);">${fecha(a.actualizado)}${a.por ? ' · ' + _esc(a.por.split('@')[0]) : ''}</span>` : ''}</td>
+      <td style="white-space:nowrap;text-align:right;">
+        ${a.estado !== 'aprobado' ? `<button class="acc-btn ok" onclick="accesosGuardar(${i},'aprobado')">✓ Aprobar</button>` : `<button class="acc-btn" onclick="accesosGuardar(${i},'aprobado')">Guardar</button>`}
+        ${bloqueable && a.estado !== 'bloqueado' ? `<button class="acc-btn mal" onclick="accesosGuardar(${i},'bloqueado')">Bloquear</button>` : ''}
+      </td></tr>`;
+  };
+  const thead = `<thead><tr><th>Cuenta</th><th>Nombre</th><th>Rol</th><th style="text-align:center;">Edita obras</th><th style="text-align:center;">Ve sueldos</th><th>Estado</th><th></th></tr></thead>`;
+  if (pend) pend.innerHTML = nPend ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;margin-bottom:6px;"><div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:6px;">⏳ ${nPend} pedido${nPend !== 1 ? 's' : ''} de acceso pendiente${nPend !== 1 ? 's' : ''}: elegí rol y permisos y tocá Aprobar</div><div style="overflow-x:auto;"><table class="acc-tabla">${thead}<tbody>${pendientes.map(a => fila(a, _accLista.indexOf(a))).join('')}</tbody></table></div></div>` : '';
+  if (lista) lista.innerHTML = `<div style="overflow-x:auto;"><table class="acc-tabla">${thead}<tbody>${_accLista.map((a, i) => a.estado === 'pendiente' ? '' : fila(a, i)).join('')}</tbody></table></div>`;
+}
+function _accSet(i, k, v) { if (_accLista[i]) _accLista[i][k] = v; }
+function accesosNuevo() {
+  const mail = (prompt('Mail de la cuenta de Google a habilitar:') || '').trim().toLowerCase();
+  if (!mail) return;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { alert('Mail inválido'); return; }
+  if (_accLista.some(a => a.mail === mail)) { alert('Ese mail ya está en la lista'); return; }
+  _accLista.unshift({ mail, nombre: '', rol: '', editaObras: false, veSueldos: false, estado: 'pendiente', origen: 'planilla' });
+  accesosRender();
+}
+async function accesosGuardar(i, estado) {
+  const a = _accLista[i]; if (!a) return;
+  if (estado === 'aprobado' && !a.rol) { alert('Elegí un rol antes de aprobar'); return; }
+  if (estado === 'bloqueado' && !confirm(`¿Bloquear el acceso de ${a.mail}? Podrá volver a aprobarse después.`)) return;
+  const est = document.getElementById('acc-estado'); if (est) est.textContent = 'Guardando…';
+  try {
+    const r = await fetch('/api/accesos', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'ingeco-dashboard' },
+      body: JSON.stringify({ mail: a.mail, nombre: a.nombre || '', rol: a.rol || '', editaObras: !!a.editaObras, veSueldos: !!a.veSueldos, estado }) });
+    const j = await r.json();
+    if (!r.ok || j.status !== 'ok') throw new Error(j.message || 'Error al guardar');
+    _accLista = j.accesos || _accLista; accesosRender();
+  } catch (e) { if (est) est.textContent = 'No se pudo guardar: ' + (e.message || e); alert('No se pudo guardar: ' + (e.message || e)); }
 }
 
 // ============================================================

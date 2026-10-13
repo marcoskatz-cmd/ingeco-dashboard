@@ -2,7 +2,7 @@
 // datos a Apps Script desde el servidor. Exige sesión válida (además del
 // middleware, por defensa en profundidad), solo reenvía parámetros conocidos
 // y agrega la clave secreta que Apps Script exige (APPS_SCRIPT_KEY).
-import { sessionFromRequestHeaders, VE_SUELDOS } from '../lib/session.js';
+import { sessionFromRequestHeaders } from '../lib/session.js';
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXe_MLjncMNA4-v8GLfmvhQFZG0cuMeXzSHIBccBIUUTTpXEvJuLhek-mC_S4twVCu9A/exec';
 const PARAMS_OK = ['cache', 'action', 'tipo', 'stockAntes', 'stockNuevo', 'usuario', 'fecha', 'clave', 'desde', 'valor'];
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     // Sueldos del personal mensual: solo para VE_SUELDOS. Para el resto se
     // sacan del JSON (cuenta "sueldos" de Gastos de Estructura) y se
     // recalcula el total del mes, así el detalle nunca llega al navegador.
-    if (!VE_SUELDOS.has(session.email) && data && data.gastosEstructura && typeof data.gastosEstructura === 'object') {
+    if (!session.veSueldos && data && data.gastosEstructura && typeof data.gastosEstructura === 'object') {
       for (const mes of Object.keys(data.gastosEstructura)) {
         const g = data.gastosEstructura[mes];
         if (!g || !Array.isArray(g.porCuenta)) continue;

@@ -97,6 +97,7 @@ function doPost(e) {
     }
     let r;
     if (body.action === 'obras') r = operarObras(body);
+    else if (body.action === 'accesos') r = operarAccesos(body);
     else r = { status: 'error', message: 'Acción no permitida' };
     return ContentService.createTextOutput(JSON.stringify(r)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
@@ -162,6 +163,11 @@ function doGet(e) {
           .setMimeType(ContentService.MimeType.JAVASCRIPT);
       }
       return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ── Accesos al tablero (lista para el login y la pestaña Accesos) ──
+    if (action === 'accesos') {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'ok', accesos: leerAccesos() })).setMimeType(ContentService.MimeType.JSON);
     }
 
     // ── Precios/ajustes cargados desde el tablero (✎) ─────────────
@@ -415,6 +421,79 @@ function guardarAjusteTablero(tipo, clave, desde, valor, usuario) {
     lock.releaseLock();
   }
   return { status: 'ok' };
+}
+
+// ============================================================
+// ACCESOS AL TABLERO (oct-2026) — pestaña "Accesos" de la planilla de ajustes
+// Mail | Nombre | Rol | Edita obras | Ve sueldos | Estado | Actualizado | Por | Solicitado
+// Estado: pendiente (pidió entrar y nadie lo aprobó), aprobado, bloqueado.
+// Quién puede aprobar lo decide Vercel (Adrián y María); acá solo se guarda.
+// ============================================================
+const ACCESOS_SHEET = 'Accesos';
+const ACCESOS_ROLES = { directorio: 1, administracion: 1 };
+const ACCESOS_ESTADOS = { pendiente: 1, aprobado: 1, bloqueado: 1 };
+
+function _accesosSheet() {
+  const ss = SpreadsheetApp.openById(FILE_IDS.ajustesTablero);
+  let sh = ss.getSheetByName(ACCESOS_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(ACCESOS_SHEET);
+    sh.appendRow(['Mail', 'Nombre', 'Rol', 'Edita obras', 'Ve sueldos', 'Estado', 'Actualizado', 'Por', 'Solicitado']);
+    sh.getRange(1, 1, 1, 9).setFontWeight('bold');
+  }
+  return sh;
+}
+
+function leerAccesos() {
+  const rows = _accesosSheet().getDataRange().getValues();
+  const out = [];
+  const _b = v => v === true || /^(si|sí|true|1|x)$/i.test(String(v || '').trim());
+  const _d = v => v instanceof Date ? v.toISOString() : String(v || '');
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const mail = String(r[0] || '').trim().toLowerCase();
+    if (!mail) continue;
+    out.push({ mail: mail, nombre: String(r[1] || '').trim(), rol: String(r[2] || '').trim().toLowerCase(),
+      editaObras: _b(r[3]), veSueldos: _b(r[4]), estado: String(r[5] || '').trim().toLowerCase() || 'pendiente',
+      actualizado: _d(r[6]), por: String(r[7] || ''), solicitado: _d(r[8]), fila: i + 1 });
+  }
+  return out;
+}
+
+// body: { op: 'guardar', mail, nombre, rol, editaObras, veSueldos, estado, usuario }
+//       { op: 'solicitar', mail, nombre }  → fila pendiente si no existe
+function operarAccesos(body) {
+  const mail = String(body.mail || '').trim().toLowerCase().slice(0, 120);
+  if (!mail || mail.indexOf('@') < 0) return { status: 'error', message: 'Mail inválido' };
+  const seguro = function(t) { return /^[=+\-@]/.test(t) ? "'" + t : t; };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sh = _accesosSheet();
+    const lista = leerAccesos();
+    const existente = lista.find(function(a) { return a.mail === mail; });
+    if (body.op === 'solicitar') {
+      if (existente) return { status: 'ok', estado: existente.estado, nuevo: false };
+      sh.appendRow([mail, seguro(String(body.nombre || '').slice(0, 80)), '', '', '', 'pendiente', '', '', new Date()]);
+      return { status: 'ok', estado: 'pendiente', nuevo: true };
+    }
+    if (body.op === 'guardar') {
+      const rol = String(body.rol || '').trim().toLowerCase();
+      const estado = String(body.estado || '').trim().toLowerCase();
+      if (!ACCESOS_ESTADOS[estado]) return { status: 'error', message: 'Estado inválido' };
+      if (estado === 'aprobado' && !ACCESOS_ROLES[rol]) return { status: 'error', message: 'Rol inválido' };
+      const fila = [mail, seguro(String(body.nombre || (existente ? existente.nombre : '')).slice(0, 80)), rol,
+        body.editaObras === true || body.editaObras === 'true' ? 'si' : 'no',
+        body.veSueldos === true || body.veSueldos === 'true' ? 'si' : 'no',
+        estado, new Date(), seguro(String(body.usuario || '').slice(0, 100)), existente && existente.solicitado ? new Date(existente.solicitado) : ''];
+      if (existente) sh.getRange(existente.fila, 1, 1, fila.length).setValues([fila]);
+      else sh.appendRow(fila);
+      return { status: 'ok', estado: estado };
+    }
+    return { status: 'error', message: 'Operación no permitida' };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ============================================================

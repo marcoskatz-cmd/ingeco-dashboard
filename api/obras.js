@@ -2,7 +2,7 @@
 // como JSON y lo reenvía al Apps Script (doPost) con la clave secreta.
 // Solo pueden operar los mails de OBRAS_EDITORES; el usuario que queda en el
 // historial es el de la sesión, nunca el que diga el cuerpo.
-import { sessionFromRequestHeaders, OBRAS_EDITORES } from '../lib/session.js';
+import { sessionFromRequestHeaders } from '../lib/session.js';
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXe_MLjncMNA4-v8GLfmvhQFZG0cuMeXzSHIBccBIUUTTpXEvJuLhek-mC_S4twVCu9A/exec';
 const OPS_OK = new Set(['altaObra', 'agregarCert', 'editarCert', 'borrarCert', 'estadoCert']);
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   try {
     const session = await sessionFromRequestHeaders(req.headers);
     if (!session) return res.status(401).json({ status: 'error', message: 'No autorizado' });
-    if (!OBRAS_EDITORES.has(session.email)) return res.status(403).json({ status: 'error', message: 'Tu usuario no puede cargar obras' });
+    if (!session.editaObras) return res.status(403).json({ status: 'error', message: 'Tu usuario no puede cargar obras' });
     if (req.headers['x-requested-with'] !== 'ingeco-dashboard') return res.status(403).json({ status: 'error', message: 'Origen no permitido' });
 
     const body = (req.body && typeof req.body === 'object') ? req.body : {};

@@ -61,7 +61,8 @@
         });
         const d = await r.json().catch(() => ({}));
         if (r.ok && d.status === 'ok') { location.replace(nextPath()); return; }
-        if (r.status === 403) showErr((d.email ? d.email + ': ' : '') + 'esta cuenta no tiene acceso al tablero. Pedile a María que la habilite.');
+        if (r.status === 403 && d.code === 'bloqueado') showErr((d.email ? d.email + ': ' : '') + 'esta cuenta está bloqueada.');
+        else if (r.status === 403) showErr((d.email ? d.email + ': ' : '') + (d.registrado ? 'todavía no tiene acceso. Quedó el pedido registrado: Adrián o María lo aprueban desde el tablero y después podés volver a entrar.' : 'esta cuenta no tiene acceso al tablero. Pedile a Adrián o María que la habiliten.'));
         else if (r.status === 429) showErr('Demasiados intentos. Esperá un minuto y volvé a probar.');
         else showErr(d.message || 'No se pudo validar el ingreso. Probá de nuevo.');
       } catch (e) {
