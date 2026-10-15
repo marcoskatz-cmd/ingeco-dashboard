@@ -8,6 +8,54 @@ import Anthropic from '@anthropic-ai/sdk';
 import { sessionFromRequestHeaders } from '../lib/session.js';
 
 const MODEL = 'claude-opus-5-5';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXe_MLjncMNA4-v8GLfmvhQFZG0cuMeXzSHIBccBIUUTTpXEvJuLhek-mC_S4twVCu9A/exec';
+const MAX_VUELTAS = 4;          // llamadas a herramientas por pregunta
+
+// Herramienta: OC de insumos una por una (planilla de Guillermo). Se ejecuta
+// acá en el servidor sobre las filas que devuelve Apps Script (action=ocDetalle).
+const TOOLS = [{
+  name: 'buscar_oc',
+  description: 'Busca órdenes de compra (OC) de insumos UNA POR UNA en la planilla de Guillermo (año en curso). Usala para preguntas sobre OC individuales: la OC más grande o más chica, qué se le compró a un proveedor, OC de una obra o de un mes, OC con cierta descripción, cantidad de OC. Devuelve las filas que coinciden ordenadas, la cantidad total de coincidencias y la suma de sus montos. Los filtros de texto son "contiene", sin importar mayúsculas ni acentos. Para totales por obra/mes alcanza con el paquete; usá esta herramienta cuando haga falta el detalle de cada orden.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      mes: { type: 'string', enum: ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'], description: 'Mes de la fecha de la OC (opcional).' },
+      obra: { type: 'string', description: 'Texto contenido en la obra o el código de obra (opcional).' },
+      proveedor: { type: 'string', description: 'Texto contenido en el proveedor (opcional).' },
+      texto: { type: 'string', description: 'Texto contenido en la descripción de la OC (opcional), ej. "cemento", "mano de obra".' },
+      estado: { type: 'string', description: 'Texto contenido en el estado (opcional), ej. "acept", "pend".' },
+      orden: { type: 'string', enum: ['monto_desc', 'monto_asc', 'fecha_desc', 'fecha_asc'], description: 'Orden del resultado. Por defecto monto_desc.' },
+      limite: { type: 'integer', minimum: 1, maximum: 50, description: 'Cantidad máxima de filas a devolver (por defecto 15).' },
+    },
+    additionalProperties: false,
+  },
+}];
+
+let _ocCache = { t: 0, filas: null };
+async function _ocFilas() {
+  if (_ocCache.filas && Date.now() - _ocCache.t < 10 * 60 * 1000) return _ocCache.filas;
+  const p = new URLSearchParams({ action: 'ocDetalle', key: process.env.APPS_SCRIPT_KEY || '' });
+  const r = await fetch(APPS_SCRIPT_URL + '?' + p.toString(), { redirect: 'follow', headers: { 'User-Agent': 'IngecoDashboardProxy/2.0' } });
+  if (!r.ok) throw new Error('Apps Script HTTP ' + r.status);
+  const j = JSON.parse(await r.text());
+  if (j.status !== 'ok' || !Array.isArray(j.ocs)) throw new Error('Respuesta inválida de OC');
+  _ocCache = { t: Date.now(), filas: j.ocs };
+  return j.ocs;
+}
+const _norm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const _fechaNum = f => { const m = String(f || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); return m ? +m[3] * 10000 + +m[2] * 100 + +m[1] : 0; };
+async function buscarOC(q) {
+  const filas = await _ocFilas();
+  const f = (campo, txt) => !q[campo] || _norm(txt).includes(_norm(q[campo]));
+  const res = filas.filter(r => (!q.mes || r[2] === q.mes) && f('obra', r[4] + ' ' + r[5]) && f('proveedor', r[3]) && f('texto', r[6]) && f('estado', r[8]));
+  const orden = q.orden || 'monto_desc';
+  res.sort((a, b) => orden === 'monto_asc' ? a[7] - b[7] : orden === 'fecha_desc' ? _fechaNum(b[1]) - _fechaNum(a[1]) : orden === 'fecha_asc' ? _fechaNum(a[1]) - _fechaNum(b[1]) : b[7] - a[7]);
+  const limite = Math.min(50, Math.max(1, parseInt(q.limite) || 15));
+  return {
+    coincidencias: res.length, sumaMontos: res.reduce((s, r) => s + r[7], 0), totalOCdelAnio: filas.length,
+    filas: res.slice(0, limite).map(r => ({ orden: r[0], fecha: r[1], proveedor: r[3], obra: r[4] || '(sin obra)', codigo: r[5] || undefined, descripcion: r[6], monto: r[7], estado: r[8] || undefined, filaPlanilla: r[9] })),
+  };
+}
 const MAX_PAQUETE = 900 * 1024; // bytes de JSON
 const MAX_HISTORIAL = 12;       // turnos (user+assistant) que se reenvían
 
@@ -25,7 +73,7 @@ Reglas:
 
 Glosario del paquete:
 - meses: por mes (ene..dic 2026). obras[]: por obra: certificado (lo certificado del período, archivo de Agustín), estadoCert, insumos (OC de insumos, Guillermo, incluye MO tercerizada moHormigon), moPropia (mano de obra propia TANGO), alquiler (alquiler interno de equipos), asfaltoCalienteTn / asfaltoFrioTn (remitos), costoAsfalto (teórico), margen (contribución marginal = certificado − insumos − moPropia − alquiler − costoAsfalto).
-- ocInsumos: OC de insumos del mes (planilla de Guillermo): total, cantidad de OC y por obra la lista de proveedores con monto y nOC (cantidad de órdenes). Si nOC es 1, ese monto es el de una sola OC; si es mayor, es la suma de varias. No hay detalle orden por orden ni fechas de pago (eso está en la planilla de Guillermo o en el libro mayor de Romina). "Obra no disponible" / "Sin clasificar" = OC sin obra asignada.
+- ocInsumos: OC de insumos del mes (planilla de Guillermo): total, cantidad de OC y por obra la lista de proveedores con monto y nOC (cantidad de órdenes). Si nOC es 1, ese monto es el de una sola OC; si es mayor, es la suma de varias. Para el detalle orden por orden (número de OC, fecha, descripción, estado) usá la herramienta buscar_oc; las OC no traen fecha de pago (el monto es el de la orden; los pagos están en el libro mayor de Romina). "Obra no disponible" / "Sin clasificar" = OC sin obra asignada.
 - provisiones[]: certificación de provisiones de asfalto/pavimax del mes (real de Esteban si la cargó, si no teórica tn × precio).
 - totalCertificado: certificado de obras + provisiones del mes (es la tarjeta "Total Certificado").
 - cobrosEsteban: por obra, lo cobrado, facturado (sin cobrar), programado (sin fecha) y menosProbable del mes según la planilla de Esteban.
@@ -70,18 +118,40 @@ export default async function handler(req, res) {
     messages.push({ role: 'user', content: pregunta });
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const response = await client.beta.messages.create({
-      model: MODEL,
-      max_tokens: 1500,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      system: [
-        { type: 'text', text: SYSTEM },
-        // El paquete cambia solo cuando se actualizan los datos: cacheable.
-        { type: 'text', text: 'Usuario: ' + session.email + ' (rol ' + session.role + ').\n\nPAQUETE DE DATOS DEL TABLERO:\n' + paqueteJson, cache_control: { type: 'ephemeral' } },
-      ],
-      messages,
-    });
+    const system = [
+      { type: 'text', text: SYSTEM },
+      // El paquete cambia solo cuando se actualizan los datos: cacheable.
+      { type: 'text', text: 'Usuario: ' + session.email + ' (rol ' + session.role + ').\n\nPAQUETE DE DATOS DEL TABLERO:\n' + paqueteJson, cache_control: { type: 'ephemeral' } },
+    ];
+    // Bucle de herramientas: si Claude pide buscar_oc, se ejecuta acá y se le
+    // devuelve el resultado; se corta cuando responde el texto final.
+    let response;
+    const usoTot = { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
+    for (let vuelta = 0; vuelta <= MAX_VUELTAS; vuelta++) {
+      response = await client.beta.messages.create({
+        model: MODEL, max_tokens: 2000,
+        betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+        system, tools: TOOLS, messages,
+      });
+      const u = response.usage || {};
+      usoTot.input += u.input_tokens || 0; usoTot.cacheRead += u.cache_read_input_tokens || 0;
+      usoTot.cacheWrite += u.cache_creation_input_tokens || 0; usoTot.output += u.output_tokens || 0;
+      if (response.stop_reason !== 'tool_use' || vuelta === MAX_VUELTAS) break;
+      messages.push({ role: 'assistant', content: response.content });
+      const resultados = [];
+      for (const b of response.content) {
+        if (b.type !== 'tool_use') continue;
+        let out, isError = false;
+        try {
+          if (b.name !== 'buscar_oc') throw new Error('Herramienta desconocida');
+          out = await buscarOC(b.input && typeof b.input === 'object' ? b.input : {});
+        } catch (e) { out = { error: 'No se pudo consultar la planilla de OC: ' + (e && e.message || e) }; isError = true; }
+        const tr = { type: 'tool_result', tool_use_id: b.id, content: JSON.stringify(out) };
+        if (isError) tr.is_error = true;
+        resultados.push(tr);
+      }
+      messages.push({ role: 'user', content: resultados });
+    }
 
     if (response.stop_reason === 'refusal') {
       return res.status(200).json({ status: 'ok', respuesta: 'No puedo responder eso desde el tablero.', refusal: true });
@@ -90,7 +160,7 @@ export default async function handler(req, res) {
     res.status(200).json({
       status: 'ok',
       respuesta: texto || 'No obtuve respuesta. Probá de nuevo.',
-      usage: { input: response.usage.input_tokens, cacheRead: response.usage.cache_read_input_tokens || 0, cacheWrite: response.usage.cache_creation_input_tokens || 0, output: response.usage.output_tokens },
+      usage: usoTot,
     });
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) return res.status(503).json({ status: 'error', code: 'key_invalida', message: 'La clave de Anthropic no es válida.' });

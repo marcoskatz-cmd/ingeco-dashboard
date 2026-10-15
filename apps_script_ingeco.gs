@@ -165,6 +165,11 @@ function doGet(e) {
       return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
     }
 
+    // ── OC una por una (para INGEBOT): se lee en vivo, no va al caché ──
+    if (action === 'ocDetalle') {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'ok', ocs: leerOCDetalle() })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     // ── Accesos al tablero (lista para el login y la pestaña Accesos) ──
     if (action === 'accesos') {
       return ContentService.createTextOutput(JSON.stringify({ status: 'ok', accesos: leerAccesos() })).setMimeType(ContentService.MimeType.JSON);
@@ -1364,6 +1369,42 @@ function leerOCInsumos() {
     Logger.log('leerOCInsumos error: ' + err.toString());
     return null;
   }
+}
+
+// OC de insumos una por una (oct-2026), para que INGEBOT pueda responder
+// "la OC más grande", "qué le compramos a X", etc. Se pide en vivo desde
+// Vercel (action=ocDetalle) y no se guarda en el caché de Script Properties
+// (no entraría en la cuota). Filas compactas del año en curso:
+// [orden, fecha dd/mm/aaaa, mes, proveedor, obra, código, descripción, monto, estado, fila]
+function leerOCDetalle() {
+  const ss = SpreadsheetApp.openById(FILE_IDS.ocInsumos);
+  const _sinAcentos = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  const hojas = ss.getSheets();
+  const sheet = hojas.find(sh => _sinAcentos(sh.getName()) === 'ORDENES')
+             || hojas.find(sh => /ORDENES/.test(_sinAcentos(sh.getName()))) || hojas[0];
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length < 2) return [];
+  let hdrIdx = 0;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    const t = rows[i].map(c => String(c).toLowerCase()).join('|');
+    if (t.includes('fecha') || t.includes('monto') || t.includes('importe')) { hdrIdx = i; break; }
+  }
+  const h = rows[hdrIdx].map(x => String(x).toLowerCase().trim());
+  const cF = _findCol(h, ['fecha']) ?? 2, cM = _findCol(h, ['monto', 'importe', 'total']) ?? 4;
+  const cP = _findCol(h, ['proveedor', 'prov']) ?? 1, cC = _findCol(h, ['código obra', 'codigo obra', 'cod obra', 'cod_obra']) ?? 7;
+  const cO = _findCol(h, ['obra general', 'obra']) ?? 5, cE = _findCol(h, ['estado', 'status']) ?? 6;
+  const cD = _findCol(h, ['descripción', 'descripcion', 'detalle']) ?? 3, cN = _findCol(h, ['n° orden', 'nº orden', 'n orden', 'orden']) ?? 0;
+  const out = [];
+  for (let i = hdrIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const mes = parsearMes(r[cF]); if (!mes) continue;
+    const monto = parsearMonto(r[cM]); if (!monto || monto <= 0) continue;
+    const f = r[cF];
+    const fecha = f instanceof Date && !isNaN(f.getTime()) ? Utilities.formatDate(f, 'UTC', 'dd/MM/yyyy') : String(f || '').trim();
+    out.push([String(r[cN] || '').trim(), fecha, mes, String(r[cP] || '').trim(), String(r[cO] || '').trim(),
+      String(r[cC] || '').trim(), String(r[cD] || '').trim().slice(0, 90), Math.round(monto), String(r[cE] || '').trim(), i + 1]);
+  }
+  return out;
 }
 
 // ============================================================
