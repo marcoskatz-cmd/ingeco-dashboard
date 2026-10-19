@@ -4,5 +4,5 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const s = await sessionFromRequestHeaders(req.headers);
   if (!s) return res.status(401).json({ status: 'error', message: 'No autorizado' });
-  res.status(200).json({ status: 'ok', email: s.email, role: s.role, editaObras: s.editaObras, veSueldos: s.veSueldos, adminAccesos: s.adminAccesos, nombre: s.nombre });
+  res.status(200).json({ status: 'ok', email: s.email, role: s.role, editaObras: s.editaObras, veSueldos: s.veSueldos, adminAccesos: s.adminAccesos, cargaAsfalto: !!s.cargaAsfalto, nombre: s.nombre });
 }

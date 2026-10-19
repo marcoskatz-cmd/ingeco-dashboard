@@ -98,6 +98,7 @@ function doPost(e) {
     let r;
     if (body.action === 'obras') r = operarObras(body);
     else if (body.action === 'accesos') r = operarAccesos(body);
+    else if (body.action === 'ingresoAsfalto') r = guardarIngresoAsfalto(body);
     else r = { status: 'error', message: 'Acción no permitida' };
     return ContentService.createTextOutput(JSON.stringify(r)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
@@ -3470,6 +3471,37 @@ function diagnosticoEquipos() {
 // fecha real del corte en vez de usar siempre "hoy" (ej. Agustín carga hoy
 // un ajuste que en los hechos se hizo la semana pasada). Si no es un formato
 // válido, se ignora y se usa la fecha actual como siempre.
+// Ingreso de asfalto cargado desde el tablero (oct-2026): misma fila que deja
+// el formulario de Google en "Respuestas de formulario 1"
+// (Marca temporal | Fecha | N° Remito | Cantidad [Kg] | Condición de pago | Costo total)
+// más el mail de quien lo cargó en la primera columna libre "Cargado por (tablero)".
+function guardarIngresoAsfalto(body) {
+  const m = String(body.fecha || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return { status: 'error', message: 'Fecha inválida' };
+  const fecha = new Date(+m[3], +m[2] - 1, +m[1], 12, 0, 0);
+  const kg = Math.round(Number(body.kg));
+  if (!(kg > 0 && kg <= 100000)) return { status: 'error', message: 'Cantidad inválida' };
+  const costo = body.costo === '' || body.costo == null ? '' : Math.round(Number(body.costo));
+  const seguro = function(t) { return /^[=+\-@]/.test(t) ? "'" + t : t; };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sh = SpreadsheetApp.openById(FILE_IDS.ajusteStock).getSheetByName('Respuestas de formulario 1');
+    if (!sh) return { status: 'error', message: 'No se encontró la hoja de respuestas del formulario' };
+    const hdr = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 6)).getValues()[0].map(function(h) { return String(h || '').trim(); });
+    let cUsr = hdr.findIndex(function(h) { return /cargado por/i.test(h); });
+    if (cUsr < 0) { cUsr = Math.max(6, hdr.length); sh.getRange(1, cUsr + 1).setValue('Cargado por (tablero)'); }
+    const fila = [new Date(), fecha, seguro(String(body.remito || '').slice(0, 40)), kg,
+                  body.condicion === 'Pagado' ? 'Pagado' : 'No pagado', costo];
+    while (fila.length < cUsr) fila.push('');
+    fila[cUsr] = seguro(String(body.usuario || '').slice(0, 100));
+    sh.appendRow(fila);
+  } finally {
+    lock.releaseLock();
+  }
+  return { status: 'ok' };
+}
+
 function guardarAjusteStock(stockAntes, stockNuevo, usuario, tipo, fechaCustom) {
   try {
     const ss    = SpreadsheetApp.openById(FILE_IDS.ajusteStock);
@@ -3563,6 +3595,10 @@ function leerStockAsfalto(remitosData) {
       });
       // Columna "Costo total" — costo de compra del asfalto (materia prima)
       const iCosto = headers.findIndex(function(h) { return h.includes('costo'); });
+      // Fecha real del ingreso (col "Fecha"); la marca temporal es cuándo se
+      // cargó, que puede ser semanas después (oct-2026). Si no hay columna Fecha
+      // se usa la marca temporal como antes.
+      const iFechaIng = headers.findIndex(function(h) { return h === 'fecha' || (h.indexOf('fecha') === 0 && h.indexOf('marca') < 0); });
       Logger.log('StockAsfalto — iQty=' + iQty + ' iCosto=' + iCosto +
                  (iQty >= 0 ? ' ("' + headers[iQty] + '")' : ' (qty no encontrado)'));
 
@@ -3572,8 +3608,19 @@ function leerStockAsfalto(remitosData) {
 
       if (iQty >= 0) {
         for (var i = 1; i < rows.length; i++) {
-          var rawFecha = rows[i][0];
-          var fechaForm = rawFecha instanceof Date ? rawFecha : new Date(rawFecha);
+          var rawMarca = rows[i][0];
+          var marca = rawMarca instanceof Date ? rawMarca : new Date(rawMarca);
+          var fechaForm = marca;
+          if (iFechaIng >= 0 && rows[i][iFechaIng]) {
+            var rf = rows[i][iFechaIng];
+            var fd = rf instanceof Date ? rf : null;
+            if (!fd) { var mf = String(rf).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (mf) fd = new Date(+mf[3], +mf[2] - 1, +mf[1]); }
+            // Mismo día que el corte: decide la marca temporal (hora de carga)
+            if (fd && !isNaN(fd.getTime())) {
+              var mismoDia = fd.getFullYear() === fechaBase.getFullYear() && fd.getMonth() === fechaBase.getMonth() && fd.getDate() === fechaBase.getDate();
+              fechaForm = mismoDia && marca && !isNaN(marca.getTime()) ? marca : new Date(fd.getFullYear(), fd.getMonth(), fd.getDate(), 23, 59, 59);
+            }
+          }
           if (!fechaForm || isNaN(fechaForm.getTime())) continue;
 
           var raw = rows[i][iQty];

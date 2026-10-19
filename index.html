@@ -632,6 +632,14 @@
   body.role-admin [data-restrict="sueldos"] { display: none !important; }
   body:not(.ve-sueldos) .solo-ve-sueldos { display: none !important; }
   body:not(.admin-accesos) .solo-admin-accesos { display: none !important; }
+  body:not(.carga-asfalto) .solo-carga-asfalto { display: none !important; }
+  .planta-acciones { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin: -4px 0 12px; }
+  .ia-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-top: 14px; }
+  .ia-form label { font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 4px; }
+  .ia-form input, .ia-form select { width: 100%; border: 1.5px solid var(--border); border-radius: 8px; padding: 9px 10px; font-size: 14px; font-family: inherit; background: #fff; }
+  .ia-form input:focus, .ia-form select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(27,58,92,.12); }
+  .ia-form .full { grid-column: 1 / -1; }
+  @media (max-width: 600px) { .ia-form { grid-template-columns: 1fr; } }
   /* Pestaña Accesos */
   .acc-tabla { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   .acc-tabla th { text-align: left; font-size: 11px; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 2px solid var(--border); white-space: nowrap; }
@@ -1290,6 +1298,10 @@
 <!-- TAB 3: PLANTA DE ASFALTO -->
 <!-- ================================================================ -->
 <div class="tab-panel" id="tab-planta">
+  <div class="planta-acciones solo-carga-asfalto">
+    <button class="btn-nueva-obra" onclick="abrirIngresoAsfalto()" title="Cargar un ingreso de asfalto (materia prima): mismo dato que el formulario de Google">＋ Ingreso de asfalto</button>
+    <a class="btn-nueva-obra" href="https://forms.gle/xb6Fq9dqnVb7mfQB6" target="_blank" rel="noopener" title="Abrir el formulario de Google">📝 Formulario</a>
+  </div>
   <div class="kpi-grid">
     <div class="kpi-card pos" style="cursor:pointer;" onclick="openTnPanel()" title="Click para ver el detalle por destino">
       <div class="kpi-label">TN PRODUCIDAS</div>
@@ -1466,7 +1478,9 @@
           <div class="org-role">Planta / Operaciones · Obras a cobrar</div>
           <div class="org-tasks">
             <div class="org-task"><a href="https://docs.google.com/spreadsheets/d/1YldZRtbLh17Xqczl-omI0zjHcgvrhvp3QOsjWffEm_s/edit" target="_blank">Obras a cobrar</a></div>
-            <div class="org-task"><a href="https://docs.google.com/spreadsheets/d/1yZArsIKYMfq9UPUXyiASXtDNXyubTjFx3PPW2VjG-uA/edit" target="_blank">Form. ingreso asfalto</a></div>
+            <div class="org-task"><a href="https://forms.gle/xb6Fq9dqnVb7mfQB6" target="_blank" rel="noopener">📝 Cargar ingreso de asfalto (formulario)</a></div>
+            <div class="org-task solo-carga-asfalto"><a href="#" onclick="event.preventDefault();abrirIngresoAsfalto()">＋ Cargar ingreso desde la app</a></div>
+            <div class="org-task"><a href="https://docs.google.com/spreadsheets/d/1yZArsIKYMfq9UPUXyiASXtDNXyubTjFx3PPW2VjG-uA/edit" target="_blank">Respuestas del formulario (planilla)</a></div>
             <div class="org-task"><a href="https://docs.google.com/spreadsheets/d/1PEcPzwrQ8kE2evmUlrFq9wPbgWOR92MPl3LEqcSYbIk/edit" target="_blank">Precios equipos</a></div>
           </div>
         </div>
@@ -10714,6 +10728,60 @@ function openAjusteStockPanel() {
   setTimeout(() => { const i = document.getElementById('ajuste-input'); if (i) i.focus(); }, 50);
 }
 
+// ── Ingreso de asfalto desde el tablero (oct-2026) ──────────────────────
+// Mismos campos que el formulario de Google de Agustín; escribe en la misma
+// planilla ("Respuestas de formulario 1") vía /api/asfalto.
+function abrirIngresoAsfalto() {
+  const panel = document.getElementById('sidePanel'), overlay = document.getElementById('overlay'), content = document.getElementById('panelContent');
+  if (!panel || !content) return;
+  const hoy = new Date(); const iso = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+  const ult = (stockData.ingresosDetalle || []).slice(-5).reverse();
+  content.innerHTML = `
+    <div class="panel-title">Ingreso de asfalto</div>
+    <div class="panel-sub">Asfalto (materia prima) que entra a la planta · mismo dato que el <a href="https://forms.gle/xb6Fq9dqnVb7mfQB6" target="_blank" rel="noopener">formulario de Google</a></div>
+    <div class="ia-form">
+      <div><label for="ia-fecha">Fecha del ingreso</label><input type="date" id="ia-fecha" value="${iso}" max="${iso}"></div>
+      <div><label for="ia-remito">N° de remito</label><input type="text" id="ia-remito" placeholder="ej. 126775" maxlength="40"></div>
+      <div><label for="ia-kg">Cantidad (kg)</label><input type="text" id="ia-kg" inputmode="numeric" placeholder="ej. 25.860" oninput="_montoInput(this)"></div>
+      <div><label for="ia-cond">Condición de pago</label><select id="ia-cond"><option>No pagado</option><option>Pagado</option></select></div>
+      <div class="full"><label for="ia-costo">Costo total en $ (opcional)</label><input type="text" id="ia-costo" inputmode="numeric" placeholder="ej. 50.000.000" oninput="_montoInput(this)"></div>
+      <div class="full" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="btn-nueva-obra" id="ia-btn" onclick="guardarIngresoAsfalto()" style="padding:9px 18px;font-size:13px;">Guardar ingreso</button>
+        <span id="ia-fb" style="font-size:12px;"></span>
+      </div>
+    </div>
+    <div style="margin-top:14px;font-size:11px;color:var(--muted);line-height:1.6;">El ingreso suma al stock de asfalto desde su fecha (si es posterior al último corte de stock). La cantidad va en <strong>kilos</strong>, como en el formulario (25.860 kg = 25,9 tn).</div>
+    ${ult.length ? `<div style="margin-top:14px;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;">ÚLTIMOS INGRESOS DESDE EL CORTE</div>${ult.map(x => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);"><span>${x.fecha}</span><strong>${fmtTn(x.cantidad)} tn</strong></div>`).join('')}</div>` : ''}`;
+  panel.classList.add('open'); overlay.classList.add('open');
+  setTimeout(() => { const i = document.getElementById('ia-remito'); if (i) i.focus(); }, 60);
+}
+async function guardarIngresoAsfalto() {
+  const btn = document.getElementById('ia-btn'), fb = document.getElementById('ia-fb');
+  const fIso = (document.getElementById('ia-fecha') || {}).value || '';
+  const kg = parseInt(String((document.getElementById('ia-kg') || {}).value || '').replace(/\D/g, ''), 10);
+  const costoTxt = String((document.getElementById('ia-costo') || {}).value || '').split(',')[0].replace(/\D/g, '');
+  const remito = String((document.getElementById('ia-remito') || {}).value || '').trim();
+  const cond = (document.getElementById('ia-cond') || {}).value || 'No pagado';
+  const err = t => { fb.textContent = '⚠ ' + t; fb.style.color = 'var(--neg)'; };
+  if (!fIso) return err('Elegí la fecha.');
+  if (!(kg > 0)) return err('Ingresá la cantidad en kg.');
+  if (kg < 1000 && !confirm(`¿${kg} kg? Son ${(kg / 1000).toFixed(2)} tn. La cantidad va en kilos. ¿Guardar igual?`)) return;
+  if (kg > 60000 && !confirm(`¿${kg.toLocaleString('es-AR')} kg (${(kg / 1000).toFixed(1)} tn)? Es más que un camión normal. ¿Guardar igual?`)) return;
+  const [a, m, d] = fIso.split('-');
+  btn.disabled = true; btn.textContent = '⏳ Guardando…'; fb.textContent = '';
+  try {
+    const r = await fetch('/api/asfalto', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'ingeco-dashboard' },
+      body: JSON.stringify({ fecha: d + '/' + m + '/' + a, remito, kg, condicion: cond, costo: costoTxt ? parseInt(costoTxt, 10) : '' }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.status !== 'ok') throw new Error(j.message || ('HTTP ' + r.status));
+    fb.textContent = `✓ Guardado: ${(kg / 1000).toLocaleString('es-AR', { maximumFractionDigits: 1 })} tn del ${d}/${m}/${a}. Actualizando el stock…`; fb.style.color = 'var(--pos)';
+    btn.textContent = 'Guardado';
+    ['ia-remito', 'ia-kg', 'ia-costo'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'Guardar otro'; }, 1500);
+    try { if (typeof refreshData === 'function') refreshData(); } catch (e) {}
+  } catch (e) { err('No se pudo guardar: ' + (e.message || e)); btn.disabled = false; btn.textContent = 'Guardar ingreso'; }
+}
+
 // Modelo simplificado: un solo stock de asfalto (el frío ya no es stock aparte).
 async function ajustarStock(tipo) {
   const input = document.getElementById('ajuste-input');
@@ -12100,6 +12168,7 @@ async function cerrarSesion() {
     document.body.classList.toggle('edita-obras', !!me.editaObras);
     document.body.classList.toggle('ve-sueldos', !!me.veSueldos);
     document.body.classList.toggle('admin-accesos', !!me.adminAccesos);
+    document.body.classList.toggle('carga-asfalto', !!me.cargaAsfalto);
     if (me.adminAccesos) setTimeout(accesosCargar, 1500);
     const saludoEl = document.getElementById('saludo-usuario');
     if (saludoEl && me.nombre) { const h = new Date().getHours(); saludoEl.textContent = (h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches') + ', ' + me.nombre; }
