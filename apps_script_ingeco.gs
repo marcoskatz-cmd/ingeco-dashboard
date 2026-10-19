@@ -3467,10 +3467,6 @@ function diagnosticoEquipos() {
 // AJUSTE DE STOCK DE ASFALTO
 // ============================================================
 
-// fechaCustom (opcional): dd/MM/yyyy — permite cargar retroactivamente la
-// fecha real del corte en vez de usar siempre "hoy" (ej. Agustín carga hoy
-// un ajuste que en los hechos se hizo la semana pasada). Si no es un formato
-// válido, se ignora y se usa la fecha actual como siempre.
 // Ingreso de asfalto cargado desde el tablero (oct-2026): misma fila que deja
 // el formulario de Google en "Respuestas de formulario 1"
 // (Marca temporal | Fecha | N° Remito | Cantidad [Kg] | Condición de pago | Costo total)
@@ -3502,6 +3498,10 @@ function guardarIngresoAsfalto(body) {
   return { status: 'ok' };
 }
 
+// fechaCustom (opcional): dd/MM/yyyy — permite cargar retroactivamente la
+// fecha real del corte en vez de usar siempre "hoy" (ej. Agustín carga hoy
+// un ajuste que en los hechos se hizo la semana pasada). Si no es un formato
+// válido, se ignora y se usa la fecha actual como siempre.
 function guardarAjusteStock(stockAntes, stockNuevo, usuario, tipo, fechaCustom) {
   try {
     const ss    = SpreadsheetApp.openById(FILE_IDS.ajusteStock);
