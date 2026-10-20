@@ -923,6 +923,47 @@
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231b2f5e' stroke-width='2' fill='none'/%3E%3C/svg%3E"); }
     .sidebar-nav { margin-top: 0; border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--border); }
   }
+
+  /* ---- Pulido de tablero (oct-2026): jerarquía, menos ruido, mismas cifras ---- */
+  .content { max-width: 1280px; padding: 24px 28px 48px; }
+  .section { margin-bottom: 36px; }
+  .kpi-grid { gap: 14px; margin-bottom: 26px; }
+  /* Borde de color solo en tarjetas de resultado; las de costo quedan neutras
+     (el número ya va en rojo/verde cuando corresponde) */
+  .kpi-card, .kpi-card.neg, .kpi-card.accent, .kpi-card.pos { border-left-color: var(--border); }
+  .kpi-card.resultado { border-left-color: var(--pos); }
+  .kpi-card.resultado.neg { border-left-color: var(--neg); }
+  .kpi-card.resultado .kpi-value { font-size: 28px; }
+  .kpi-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  /* Fuente: discreta, sin subrayado hasta pasar el mouse */
+  .fuente { font-size: 10px; color: #a3a9b4; gap: 5px; }
+  .fuente::before { content: ''; width: 9px; height: 10px; flex: 0 0 auto; opacity: .7; background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 2h8l6 6v14H6z'/%3E%3C/svg%3E") center/contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 2h8l6 6v14H6z'/%3E%3C/svg%3E") center/contain no-repeat; }
+  .fuente a, .nota-fuente a { text-decoration: none; border-bottom: 1px dotted transparent; transition: color .15s, border-color .15s; }
+  .fuente a:hover, .nota-fuente a:hover { color: var(--primary); border-bottom-color: currentColor; }
+  .kpi-card .fuente { border-top: 1px solid #eef1f5; padding-top: 6px; margin-top: 8px; }
+  /* Notas de metodología: una línea; clic para desplegar */
+  .nota-fuente { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; color: #8b93a1; font-size: 11px; padding-left: 18px; position: relative; line-height: 1.5; }
+  .nota-fuente::before { content: 'i'; position: absolute; left: 0; top: 2px; width: 13px; height: 13px; border-radius: 50%; border: 1px solid #c3c9d4; color: #8b93a1; font: italic 700 9px/12px Georgia, serif; text-align: center; }
+  .nota-fuente.abierta { -webkit-line-clamp: unset; display: block; color: var(--muted); }
+  .nota-fuente:hover { color: var(--muted); }
+  /* Tablas: subrayado punteado solo al pasar el mouse, zebra suave, totales marcados */
+  td [style*="underline dotted"] { text-decoration: none !important; }
+  tr:hover td [style*="underline dotted"] { text-decoration: underline dotted !important; }
+  tbody tr:nth-child(even) td { background: #fafbfd; }
+  tbody tr:hover td { background: #f3f6fb; }
+  td { padding: 10px 12px; }
+  th { padding: 11px 12px; font-size: 10.5px; }
+  tr[style*="font-weight:700"] td { background: #f1f4f9 !important; font-size: 13.5px; }
+  /* Auditorías: solo el punto lleva el color */
+  .audit-item summary:hover { background: #f8fafc; }
+  .audit-item.grave summary strong { color: #991b1b; }
+  /* Badges del menú: ámbar = pendiente */
+  .tab-btn > span[id$="-nav-badge"] { background: #d97706 !important; }
+  /* Íconos en botones */
+  .btn-refresh .ico, .btn-logout .ico { width: 13px; height: 13px; flex: 0 0 auto; }
+  .btn-logout { display: inline-flex; align-items: center; gap: 6px; }
 </style>
 </head>
 <body>
@@ -944,13 +985,13 @@
     </div>
     <div class="refresh-area">
       <div style="display:flex;gap:6px;align-items:center;">
-        <button class="btn-refresh solo-editor" id="btn-alta-obra" onclick="abrirAltaObra()" title="Dar de alta una obra nueva en el Maestro">＋ Obra</button>
-        <button class="btn-refresh" id="btn-refresh" onclick="refreshData()">🔄 Actualizar datos</button>
+        <button class="btn-refresh solo-editor" id="btn-alta-obra" onclick="abrirAltaObra()" title="Dar de alta una obra nueva en el Maestro"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Obra</button>
+        <button class="btn-refresh" id="btn-refresh" onclick="refreshData()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>Actualizar datos</button>
       </div>
       <div class="last-update" id="last-update">Datos locales — sin conexión a Drive</div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-      <button class="btn-logout" onclick="cerrarSesion()" title="Cerrar sesión / cambiar de usuario">⎋ Cerrar sesión</button>
+      <button class="btn-logout" onclick="cerrarSesion()" title="Cerrar sesión / cambiar de usuario"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Cerrar sesión</button>
       <div class="last-update" id="rol-actual">—</div>
     </div>
   </div>
@@ -1045,7 +1086,7 @@
 <!-- ================================================================ -->
 <div class="tab-panel active" id="tab-margen">
   <div class="kpi-grid">
-    <div class="kpi-card pos" style="cursor:pointer;" onclick="openTotalACobrarPanel()" title="Ver detalle de certificados">
+    <div class="kpi-card resultado pos" style="cursor:pointer;" onclick="openTotalACobrarPanel()" title="Ver detalle de certificados">
       <div class="kpi-label">Total Certificado</div>
       <div class="kpi-value nd" id="kpi-generado">Actualizá datos</div>
       <div class="kpi-sub" id="kpi-generado-sub">Certificados por período (A Cobrar + Cobradas)</div>
@@ -1077,7 +1118,7 @@
       <div class="kpi-sub" id="kpi-asfalto-sub">Actualizá datos para cargar</div>
       <div class="fuente" id="kpi-asfalto-fuente">tn despachadas × precio de referencia Cartellone</div>
     </div>
-    <div class="kpi-card" style="cursor:pointer;" onclick="openMargenPanel()" title="Ver cómo se calcula">
+    <div class="kpi-card resultado" style="cursor:pointer;" onclick="openMargenPanel()" title="Ver cómo se calcula">
       <div class="kpi-label">Contribución marginal</div>
       <div class="kpi-value nd" id="kpi-margen-est">sin dato</div>
       <div class="kpi-sub" id="kpi-margen-sub">Pendiente de archivos de costo</div>
@@ -1162,7 +1203,7 @@
 <!-- ================================================================ -->
 <div class="tab-panel" id="tab-margen-tipo">
   <div class="kpi-grid">
-    <div class="kpi-card pos" style="cursor:pointer;" onclick="openTotalACobrarPanel()" title="Ver detalle de certificados">
+    <div class="kpi-card resultado pos" style="cursor:pointer;" onclick="openTotalACobrarPanel()" title="Ver detalle de certificados">
       <div class="kpi-label">Total Certificado</div>
       <div class="kpi-value nd" id="kpi-generado-t">Actualizá datos</div>
       <div class="kpi-sub" id="kpi-generado-sub-t">Certificados por período (A Cobrar + Cobradas)</div>
@@ -1193,7 +1234,7 @@
       <div class="kpi-sub" id="kpi-asfalto-sub-t">Actualizá datos para cargar</div>
       <div class="fuente" id="kpi-asfalto-fuente-t">tn despachadas × precio de referencia Cartellone</div>
     </div>
-    <div class="kpi-card" style="cursor:pointer;" onclick="openMargenPanel()" title="Ver cómo se calcula">
+    <div class="kpi-card resultado" style="cursor:pointer;" onclick="openMargenPanel()" title="Ver cómo se calcula">
       <div class="kpi-label">Contribución marginal</div>
       <div class="kpi-value nd" id="kpi-margen-est-t">sin dato</div>
       <div class="kpi-sub" id="kpi-margen-sub-t">Pendiente de archivos de costo</div>
@@ -1246,7 +1287,7 @@
 
   <!-- KPI Cards: 3 categorías -->
   <div class="kpi-grid">
-    <div class="kpi-card pos" style="cursor:pointer;" onclick="openCobrosPanel('cobrado')" title="Ver detalle de cobros">
+    <div class="kpi-card resultado pos" style="cursor:pointer;" onclick="openCobrosPanel('cobrado')" title="Ver detalle de cobros">
       <div class="kpi-label">✅ Cobrado</div>
       <div class="kpi-value nd" id="kpi-cobrado-total">sin dato</div>
       <div class="kpi-sub" id="kpi-cobrado-sub">—</div>
@@ -7919,10 +7960,10 @@ function renderAuditorias() {
     </div>`;
 
   list.innerHTML = filtroHtml + visibles.map(r => `
-    <details data-audit-titulo="${r.titulo.replace(/"/g, '&quot;')}" data-audit-chequeo="${r.chequeo}" style="background:#fff;border:1px solid ${r.grave ? '#fecaca' : 'var(--border)'};border-left:4px solid ${r.grave ? '#dc2626' : '#f59e0b'};border-radius:10px;padding:0;margin-bottom:10px;overflow:hidden;">
+    <details data-audit-titulo="${r.titulo.replace(/"/g, '&quot;')}" data-audit-chequeo="${r.chequeo}" class="audit-item${r.grave ? ' grave' : ''}" style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:0;margin-bottom:8px;overflow:hidden;">
       <summary style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:13px 16px;flex-wrap:wrap;">
-        <span>${r.grave ? '🔴' : '🟡'}</span>
-        <span class="status-badge ${r.grave ? 'pendiente' : 'parcial'}" style="font-size:10px;">${r.chequeo}</span>
+        <span class="audit-dot" style="width:10px;height:10px;border-radius:50%;flex:0 0 auto;background:${r.grave ? '#dc2626' : '#f59e0b'};"></span>
+        <span class="audit-chk" style="font-size:10px;font-weight:600;color:var(--muted);background:#f3f4f6;border-radius:8px;padding:2px 8px;white-space:nowrap;">${r.chequeo}</span>
         <strong style="font-size:13px;">${r.titulo}</strong>
         <span title="Responsable de resolverlo" style="font-size:10px;font-weight:700;color:var(--primary);background:#eef2f7;border-radius:8px;padding:2px 8px;white-space:nowrap;">→ ${r.responsable || '—'}</span>
         <span style="margin-left:auto;font-weight:800;font-size:14px;">${fmt(r.monto)}</span>
@@ -10589,7 +10630,7 @@ function abrirTodosCertificados(filtro, mes, estado) {
         <option value="todos" ${_todosCertEstado === 'todos' ? 'selected' : ''}>A cobrar y cobradas</option>
       </select>
       <button class="btn-nueva-obra" onclick="abrirFormObra()" title="Agregar un certificado a una obra existente">＋ Certificado</button>
-      <button class="btn-nueva-obra" onclick="abrirAltaObra()" title="Dar de alta una obra nueva en el Maestro">＋ Obra</button>
+      <button class="btn-nueva-obra" onclick="abrirAltaObra()" title="Dar de alta una obra nueva en el Maestro"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Obra</button>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-top:8px;">✎ edita nombre, montos, período o estado (ahí se marca como cobrada) · 🗑 borra la fila. Todo queda en la pestaña Historial.${Object.keys(saldos).length ? ' La fila gris "Pendiente de certificar" se calcula sola: Monto Total del contrato menos lo ya certificado.' : ''}</div>
     <table style="width:100%;border-collapse:collapse;margin-top:10px;"><tbody>${filas || '<tr><td style="padding:16px;" class="nd">Sin certificados para ese filtro.</td></tr>'}</tbody></table>`;
@@ -12462,6 +12503,13 @@ async function cerrarSesion() {
     location.replace('/login.html?next=' + encodeURIComponent(location.pathname + location.search));
   }
 })();
+
+// Notas de metodología (.nota-fuente) colapsadas a una línea; clic para abrir
+document.addEventListener('click', function(e) {
+  const n = e.target.closest && e.target.closest('.nota-fuente');
+  if (!n || e.target.closest('a')) return;
+  n.classList.toggle('abierta');
+});
 
 // Si la sesión vence mientras el tablero está abierto, cualquier 401 del proxy manda al login
 const _fetchOrig = window.fetch.bind(window);
