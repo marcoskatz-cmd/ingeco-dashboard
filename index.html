@@ -6,7 +6,7 @@
 <title>Dashboard Ejecutivo INGECO — 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Semi+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231b3a5c'/%3E%3Cpath d='M9 22 L15 10 L23 22' stroke='%23e8a100' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='11.5' y1='17' x2='20.5' y2='17' stroke='%23e8a100' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
 <style>
@@ -827,6 +827,102 @@
     #bot-fab { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); width: 56px; height: 56px; } #bot-fab svg { width: 36px; height: 36px; } #bot-fab .bot-tip { display: none; }
   }
   @media (prefers-reduced-motion: reduce) { #bot-fab, .bot-svg .bot-eye, .bot-svg .bot-brazo, .bot-svg .bot-antena-luz, .bot-msg { animation: none !important; } }
+
+  /* ============================================================
+     TEMA "INGECO claro" (oct-2026) — mismo lenguaje visual que el
+     tablero operativo de INGECO (Avisos/Expedientes): fondo claro,
+     menú lateral blanco con la opción activa en celeste, tarjeta de
+     bienvenida azul oscura, tipografía Barlow. Solo estética: no
+     cambia la información que se muestra. Va al final para pisar
+     las reglas de arriba sin reescribirlas.
+     ============================================================ */
+  :root {
+    --primary: #1b2f5e;
+    --bg: #f4f5f8;
+    --border: #e3e7ee;
+    --muted: #6b7280;
+    --nav-active-bg: #e4ebf8;
+    --sh-sm: 0 1px 2px rgba(27,47,94,.05), 0 1px 3px rgba(27,47,94,.06);
+    --sh-md: 0 4px 14px rgba(27,47,94,.08), 0 2px 4px rgba(27,47,94,.05);
+    --sh-lg: 0 16px 36px -12px rgba(27,47,94,.18), 0 8px 16px -8px rgba(27,47,94,.10);
+    --r-sm: 10px; --r-md: 14px; --r-lg: 18px;
+    --font-display: 'Barlow Semi Condensed', 'Barlow', 'Segoe UI', system-ui, sans-serif;
+    --font-body: 'Barlow', 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  body { font-size: 14.5px; }
+  body::before { opacity: .25; }
+  h1, h2, h3, .section-title, .brand, .panel-title { font-family: var(--font-display); }
+  .kpi-value { font-family: var(--font-display); letter-spacing: -.01em; }
+
+  /* Tarjeta de bienvenida (el header): azul oscuro con viraje a verde petróleo */
+  .header {
+    margin: 14px 18px 0 18px; border-radius: var(--r-lg);
+    background: linear-gradient(100deg, #0f5c5c 0%, #163a63 28%, #121f4b 70%, #0b1337 100%);
+    box-shadow: 0 14px 34px -14px rgba(11,19,55,.55);
+    padding: 16px 22px;
+  }
+  .header::after { display: none; }
+  .header h1 { font-size: 15px; font-weight: 600; letter-spacing: .02em; color: #c7d2e8; text-transform: uppercase; }
+  .header .subtitle { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: #fff; letter-spacing: -.01em; margin-top: 2px; line-height: 1.1; }
+  .month-selector label { color: #9fb0d4; font-weight: 600; }
+  .month-btn { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.16); border-radius: 12px; padding: 7px 14px; font-weight: 600; }
+  .month-btn:hover:not(.active) { background: rgba(255,255,255,.16); }
+  .month-btn.active { background: #fff; border-color: #fff; color: var(--primary); box-shadow: 0 6px 16px -6px rgba(0,0,0,.45); }
+  .btn-refresh { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.18); border-radius: 12px; }
+  .btn-refresh:hover:not(:disabled) { background: rgba(255,255,255,.2); box-shadow: 0 6px 16px -6px rgba(0,0,0,.5); }
+  .btn-logout { border-radius: 12px; border-color: rgba(255,255,255,.18); }
+  .last-update { color: #8fa3cc; }
+
+  /* Fondo y columnas */
+  .page-body { gap: 0; }
+  .sidebar-nav {
+    background: #fff; width: 232px; padding: 14px 10px;
+    border-right: 1px solid var(--border);
+    margin-top: 14px; border-top-right-radius: var(--r-lg);
+    box-shadow: var(--sh-sm);
+  }
+  .tab-btn {
+    color: #334155; border-left: none; border-radius: 12px; padding: 10px 14px; margin: 2px 0;
+    font-size: 14px; font-weight: 500;
+  }
+  .tab-btn svg { opacity: .8; color: #475569; }
+  .tab-btn:hover:not(.active) { background: #f1f4f9; color: var(--primary); transform: none; }
+  .tab-btn.active { background: var(--nav-active-bg); color: var(--primary); font-weight: 700; }
+  .tab-btn.active svg { color: var(--primary); }
+  .sidebar-group-title { color: #94a3b8; letter-spacing: .6px; padding: 10px 14px 4px; }
+  .sidebar-group.has-active .sidebar-group-title { color: var(--primary); }
+  .sidebar-group .tab-btn.sidebar-sub { padding-left: 30px; font-size: 13.5px; }
+  .tab-btn.sidebar-sub svg { color: #cbd5e1; }
+  .tab-btn.sidebar-sub.active svg { color: var(--primary); }
+  .content { padding: 22px 26px 40px; }
+
+  /* Títulos de sección: texto azul + línea fina a la derecha (como "INGECO ——") */
+  .section-title { border-bottom: none; padding-bottom: 0; font-size: 14px; letter-spacing: .08em; color: var(--primary); margin-bottom: 12px; }
+  .section-title::after { content: ''; flex: 1 1 auto; height: 1px; background: var(--border); margin-left: 6px; }
+
+  /* Tarjetas: más redondeadas, borde suave, sin colores chillones */
+  .kpi-card { border-radius: var(--r-md); border-color: var(--border); padding: 15px 17px; border-left-width: 4px; }
+  .kpi-card:hover { transform: translateY(-3px); border-color: #cbd5e1; }
+  .kpi-card:hover .kpi-value { transform: none; }
+  .kpi-label { color: #6b7280; font-weight: 600; letter-spacing: .06em; }
+  .kpi-value { font-size: 25px; font-weight: 700; }
+  .chart-card, .table-wrap { border-radius: var(--r-md); border-color: var(--border); }
+  th { background: #f7f8fb; color: #6b7280; font-weight: 700; letter-spacing: .05em; }
+  td { border-bottom-color: #eef1f5; }
+  .clickable-panel:hover { border-color: #b7c4dc; }
+  .side-panel { border-top-left-radius: var(--r-lg); border-bottom-left-radius: var(--r-lg); }
+
+  /* Scrollbar sobre fondo claro */
+  ::-webkit-scrollbar-thumb { background: #d4d9e2; border-color: var(--bg); }
+
+  @media (max-width: 860px) {
+    .header { margin: 10px 10px 0; padding: 12px 14px; border-radius: 14px; }
+    .header .subtitle { font-size: 19px; }
+    .mobile-nav { background: #fff; border-bottom: 1px solid var(--border); box-shadow: var(--sh-sm); }
+    .mobile-nav .mobile-select { color: var(--primary); background-color: #f1f4f9; border-color: var(--border);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231b2f5e' stroke-width='2' fill='none'/%3E%3C/svg%3E"); }
+    .sidebar-nav { margin-top: 0; border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--border); }
+  }
 </style>
 </head>
 <body>
