@@ -1328,6 +1328,12 @@
       <div class="kpi-sub" id="kpi-planta-costo-tn-sub">Insumos + MO</div>
       <div class="fuente">Click para ver el cálculo</div>
     </div>
+    <div class="kpi-card neg" style="cursor:pointer;" onclick="openCombustibleUnidad('planta')" title="Click para ver el detalle por sector y equipo">
+      <div class="kpi-label">COMBUSTIBLE</div>
+      <div class="kpi-value nd" id="kpi-planta-comb">sin dato</div>
+      <div class="kpi-sub" id="kpi-planta-comb-sub">Planta, trituración, cantera y predio</div>
+      <div class="fuente">Entregas de combustible · click para ver el detalle</div>
+    </div>
     <div class="kpi-card accent" style="cursor:pointer;" onclick="openMoTnPanel()" title="Click para ver el cálculo">
       <div class="kpi-label">MO / TN</div>
       <div class="kpi-value nd" id="kpi-planta-mo-tn">sin dato</div>
@@ -1398,6 +1404,11 @@
       <div class="kpi-value nd" id="kpi-repuestos-total">sin dato</div>
       <div class="kpi-sub" id="kpi-repuestos-sub">Entregas del mes seleccionado</div>
       <div class="fuente"><a href="https://docs.google.com/spreadsheets/d/1JpXjGTJwlvMuEI-rFTd4KeKvzd708-yuSLAhIRuCFC0/edit" target="_blank">ENTREGAS DE REPUESTOS (Nico Dall'Agata)</a> — costo del Taller</div>
+    </div>
+    <div class="kpi-card neg" style="cursor:pointer;" onclick="openCombustibleUnidad('taller')" title="Click para ver el detalle por equipo">
+      <div class="kpi-label">Combustible Taller</div>
+      <div class="kpi-value nd" id="kpi-taller-comb">sin dato</div>
+      <div class="kpi-sub" id="kpi-taller-comb-sub">Taller mecánico y alquiler a terceros</div>
     </div>
     <div class="kpi-card neg" style="cursor:pointer;" onclick="openRepuestosPanel()" title="Click para ver detalle">
       <div class="kpi-label">Mayor gasto en repuestos</div>
@@ -3066,10 +3077,12 @@ function computeMargenObrasMes(mes) {
   // El alquiler interno de equipos NO incluye combustible (Marcos, oct-2026):
   // es un costo directo de la obra, aparte.
   const combPorNombre = {}, combDisplay = {}, combDet = {};
+  // Los sectores de Planta y Taller (COMB_UNIDADES) van a esas unidades, no a obras.
+  const _combNoObra = new Set(Object.values(COMB_UNIDADES).flatMap(u => u.sectores));
   if (COMBUSTIBLE && COMBUSTIBLE[mes] && COMBUSTIBLE[mes].porObra) {
     COMBUSTIBLE[mes].porObra.forEach(item => {
       const k = (item.obra || '').toLowerCase().trim();
-      if (!k) return;
+      if (!k || _combNoObra.has(k)) return;
       combPorNombre[k] = (combPorNombre[k] || 0) + item.monto;
       combDet[k] = item;
       if (!combDisplay[k]) combDisplay[k] = (item.obra || '').trim();
@@ -3439,6 +3452,57 @@ function openCombustibleObra(codObra, nombreObra, mesOver) {
     ${eqs.map(([eq, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);"><span>${_esc(eq)} <span style="color:var(--muted);font-size:10.5px;">${Math.round(v.litros).toLocaleString('es-AR')} L</span></span><strong class="neg-val">${fmt(v.monto)}</strong></div>`).join('')}`
     : '<p class="nd" style="padding:16px 0;">Sin combustible cargado a esta obra en el período.</p>'}
     <div class="nota-fuente" style="margin-top:12px;">Fuente: <a href="${SHEET_URLS_AUDIT.combLeandro}" target="_blank" rel="noopener">tanque propio (Leandro Casares)</a> · <a href="${SHEET_URLS_AUDIT.combTiburcio}" target="_blank" rel="noopener">Tiburcio Sanz</a> · <a href="${SHEET_URLS_AUDIT.combHerrero}" target="_blank" rel="noopener">Carlos Herrero</a>, columna OBRA GENERAL. El alquiler interno de equipos no incluye combustible.</div>`;
+  panel.classList.add('open'); overlay.classList.add('open');
+}
+
+// Combustible de las unidades internas (oct-2026). El de Predio Warnes es el
+// cargador frontal que trabaja para la Planta, por eso va a Planta (María).
+// Mismos sectores que el alquiler interno de Planta (Cantera / Trituración / Planta).
+const COMB_UNIDADES = {
+  planta: { titulo: 'Combustible Planta', sectores: ['planta de asfalto', 'planta de trituración', 'cantera', 'predio warnes'] },
+  taller: { titulo: 'Combustible Taller', sectores: ['taller mecánico', 'alquiler de equipos'] },
+};
+function _combUnidad(unidad, mes) {
+  const u = COMB_UNIDADES[unidad]; if (!u) return null;
+  const meses = mes === 'total' ? MES_ORDER.filter(m => COMBUSTIBLE[m]) : [mes];
+  let total = 0, litros = 0, n = 0, hay = false; const porSector = {}, porEq = {};
+  meses.forEach(m => ((COMBUSTIBLE[m] && COMBUSTIBLE[m].porObra) || []).forEach(it => {
+    const k = (it.obra || '').toLowerCase().trim();
+    if (!u.sectores.includes(k)) return;
+    hay = true; total += it.monto; litros += it.litros || 0; n += it.n || 0;
+    porSector[it.obra] = (porSector[it.obra] || 0) + it.monto;
+    (it.top || []).forEach(e => { const a = porEq[e.equipo] || (porEq[e.equipo] = { monto: 0, litros: 0 }); a.monto += e.monto; a.litros += e.litros || 0; });
+  }));
+  return hay ? { total, litros, n, porSector, porEq } : null;
+}
+function renderCombustibleUnidades() {
+  [['planta', 'kpi-planta-comb'], ['taller', 'kpi-taller-comb']].forEach(([u, id]) => {
+    const el = document.getElementById(id), sub = document.getElementById(id + '-sub');
+    if (!el) return;
+    const c = _combUnidad(u, mesActual);
+    if (c && c.total > 0) {
+      el.textContent = fmt(c.total); el.className = 'kpi-value neg-val';
+      if (sub) sub.textContent = Math.round(c.litros).toLocaleString('es-AR') + ' litros · ' + Object.entries(c.porSector).sort((a, b) => b[1] - a[1]).map(([k, v]) => k.replace(/^Planta de /, '') + ' ' + fmtM(v)).slice(0, 2).join(' · ');
+    } else {
+      el.textContent = 'sin dato'; el.className = 'kpi-value nd';
+    }
+  });
+}
+function openCombustibleUnidad(unidad) {
+  const u = COMB_UNIDADES[unidad]; if (!u) return;
+  const panel = document.getElementById('sidePanel'), overlay = document.getElementById('overlay'), content = document.getElementById('panelContent');
+  if (!panel || !content) return;
+  const c = _combUnidad(unidad, mesActual);
+  const filasSec = c ? Object.entries(c.porSector).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--border);"><span>${_esc(k)}</span><strong class="neg-val">${fmt(v)}</strong></div>`).join('') : '';
+  const filasEq = c ? Object.entries(c.porEq).sort((a, b) => b[1].monto - a[1].monto).slice(0, 15).map(([eq, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);"><span>${_esc(eq)} <span style="color:var(--muted);font-size:10.5px;">${Math.round(v.litros).toLocaleString('es-AR')} L</span></span><strong class="neg-val">${fmt(v.monto)}</strong></div>`).join('') : '';
+  content.innerHTML = `
+    <div class="panel-title">${u.titulo}</div>
+    <div class="panel-sub">${mesActual === 'total' ? 'Todos los meses' : (MES[mesActual] || mesActual)} · cargas con OBRA GENERAL = ${u.sectores.map(x => x.replace(/\b\w/g, l => l.toUpperCase())).join(', ')}</div>
+    ${c ? `<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:10px 12px;margin:14px 0;"><div style="font-size:10px;font-weight:700;color:var(--muted);">TOTAL</div><div class="neg-val" style="font-size:22px;font-weight:800;">${fmt(c.total)}</div><div style="font-size:11px;color:var(--muted);">${Math.round(c.litros).toLocaleString('es-AR')} litros · ${c.n} carga${c.n !== 1 ? 's' : ''}</div></div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;">POR SECTOR</div>${filasSec}
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 4px;">PRINCIPALES EQUIPOS</div>${filasEq}`
+    : '<p class="nd" style="padding:16px 0;">Sin combustible cargado en el período.</p>'}
+    <div class="nota-fuente" style="margin-top:12px;">${unidad === 'planta' ? 'El combustible de Predio Warnes es del cargador frontal que trabaja para la Planta, por eso se suma acá. ' : ''}Se resta en Rentabilidad → Resultado ${unidad === 'planta' ? 'Planta' : 'Taller'}. Fuente: <a href="${SHEET_URLS_AUDIT.combLeandro}" target="_blank" rel="noopener">tanque propio (Leandro Casares)</a> · <a href="${SHEET_URLS_AUDIT.combTiburcio}" target="_blank" rel="noopener">Tiburcio Sanz</a> · <a href="${SHEET_URLS_AUDIT.combHerrero}" target="_blank" rel="noopener">Carlos Herrero</a>.</div>`;
   panel.classList.add('open'); overlay.classList.add('open');
 }
 
@@ -6541,7 +6605,9 @@ function _resultadoUnidadesMes(mes) {
   const moTEst  = moTReal == null ? getMOEstimadoTaller(mes) : null;
   const moTaller = moTReal != null ? moTReal : (moTEst ? moTEst.monto : 0);
   const repTaller = REPUESTOS_EQUIPOS[mes] ? (REPUESTOS_EQUIPOS[mes].total || 0) : 0;
-  const resultTaller = alqMes != null ? alqMes - moTaller - repTaller : null;
+  const combTallerObj = _combUnidad('taller', mes);
+  const combTaller = combTallerObj ? combTallerObj.total : 0;
+  const resultTaller = alqMes != null ? alqMes - moTaller - repTaller - combTaller : null;
 
   // Resultado Planta = ingreso planta − (MO planta + OC planta + alquiler planta)
   const moPArr = getMOPlanta(mes);
@@ -6561,7 +6627,9 @@ function _resultadoUnidadesMes(mes) {
   const ingAsf = (pCal > 0 && tnCal > 0) || (pFrio > 0 && tnFrio > 0) ? Math.round(tnCal * pCal + tnFrio * pFrio) : null;
   const ingManual = INGRESOS_PLANTA[mes] != null ? INGRESOS_PLANTA[mes] : null;
   const ingPlanta = ingAsf != null ? ingAsf : ingManual;
-  const egresosPlanta = moPlanta + ocPlanta + alqPlanta;
+  const combPlantaObj = _combUnidad('planta', mes);
+  const combPlanta = combPlantaObj ? combPlantaObj.total : 0;
+  const egresosPlanta = moPlanta + ocPlanta + alqPlanta + combPlanta;
   let resultPlanta = null;
   if (ingPlanta != null) resultPlanta = ingPlanta - egresosPlanta;
   else if (egresosPlanta > 0) resultPlanta = -egresosPlanta;
@@ -6591,6 +6659,7 @@ function _resultadoUnidadesMes(mes) {
       egresos: [
         { l: 'Mano de obra Taller', v: moTaller, nota: moTReal == null ? 'estimada' : 'TANGO' },
         { l: 'Repuestos de máquinas', v: repTaller, nota: repTaller ? 'entregas (Nico)' : 'sin datos del mes' },
+        { l: 'Combustible', v: combTaller, nota: 'Taller mecánico + alquiler a terceros' },
       ] },
     planta: { titulo: 'Resultado Planta', color: '#1d4ed8', tab: 'planta', resultado: resultPlanta,
       ingresos: [{ l: 'Venta interna de mezcla', v: ingPlanta, nota: notaIngPlanta, pendiente: ingPlanta == null }],
@@ -6598,6 +6667,7 @@ function _resultadoUnidadesMes(mes) {
         { l: 'OC Insumos planta', v: ocPlanta, nota: 'asfalto, FO, etc.' },
         { l: 'Mano de obra Planta', v: moPlanta, nota: moPlantaEstim ? 'estimada' : 'TANGO' },
         { l: 'Alquiler equipos (Cantera / Trituración / Planta)', v: alqPlanta, nota: 'Partes diarios' },
+        { l: 'Combustible', v: combPlanta, nota: 'Planta, trituración, cantera y predio' },
       ] },
     estructura: { titulo: 'Gastos de Estructura', color: '#dc2626', tab: 'gastos-estructura', resultado: gastosEstructura,
       ingresos: [],
@@ -6858,21 +6928,27 @@ function renderRentabilidad() {
   // ── Márgenes por unidad ──────────────────────────────────────────────────
   // Margen Obras (el alquiler interno es costo real de la unidad Obras; el
   // alquiler a terceros — "Alquiler de equipos" — NO es costo de obra)
+  // Combustible: obras (mismo cálculo que la tabla de contribución) y unidades internas
+  const _dCombObras = mesActual !== 'total' ? computeMargenObrasMes(mesActual) : computeMargenObrasTotal();
+  const combObras   = _dCombObras && _dCombObras.rows ? _dCombObras.rows.filter(r => !r.otroGasto).reduce((a, r) => a + (r.combustible || 0), 0) : 0;
+  const _cTall = _combUnidad('taller', mesActual), _cPlan = _combUnidad('planta', mesActual);
+  const combTallerR = _cTall ? _cTall.total : 0, combPlantaR = _cPlan ? _cPlan.total : 0;
   const costoObras  = (moObras            != null ? moObras            : 0)
                     + (ocObras            != null ? ocObras            : 0)
                     + (alqObrasMes        != null ? alqObrasMes        : 0)
-                    + (costoAsfaltoObras  != null ? costoAsfaltoObras  : 0);
+                    + (costoAsfaltoObras  != null ? costoAsfaltoObras  : 0)
+                    + combObras;
   const margenObras = ingObras != null ? ingObras - costoObras : null;
 
   // Resultado Taller: revenue = alquiler cobrado a obras (interno) + alquiler a
   // terceros (externo); costo = MO taller + repuestos de máquinas (Nico)
   const repTallerMes = REPUESTOS_EQUIPOS[mesActual] ? (REPUESTOS_EQUIPOS[mesActual].total || 0) : null;
   const resultTaller = alqMes != null
-    ? alqMes - (moTaller != null ? moTaller : 0) - (repTallerMes || 0)
+    ? alqMes - (moTaller != null ? moTaller : 0) - (repTallerMes || 0) - combTallerR
     : null;
 
   // Resultado Planta
-  const egresosPlanta = (moPlanta != null ? moPlanta : 0) + (ocPlanta != null ? ocPlanta : 0) + (alqPlantaMes || 0);
+  const egresosPlanta = (moPlanta != null ? moPlanta : 0) + (ocPlanta != null ? ocPlanta : 0) + (alqPlantaMes || 0) + combPlantaR;
   const resultPlanta  = ingPlanta != null ? ingPlanta - egresosPlanta : null;
 
   // ── Consolidado parcial (alquiler interno y asfalto se cancelan entre
@@ -6884,6 +6960,7 @@ function renderRentabilidad() {
       - (moTaller   != null ? moTaller   : 0)
       - (moPlanta   != null ? moPlanta   : 0)
       - (ocPlanta   != null ? ocPlanta   : 0)
+      - combObras - combTallerR - combPlantaR
       // costoAsfaltoObras e ingPlantaAsf se cancelan → no afectan el consolidado
       + (ingPlantaManual != null ? ingPlantaManual : 0)
       + alqExterno
@@ -6946,6 +7023,7 @@ function renderRentabilidad() {
     : 'cargar precio en planilla';
   rows += row('− Costo asfalto ↕', costoAsfaltoObras != null ? 'real' : 'pend', costoAsfaltoObras, 'neg', { indent: 1, nota: notaAsfObras });
   rows += row('− Alquiler interno de máquinas ↕', alqObrasMes != null ? 'real' : 'pend', alqObrasMes, 'neg', { indent: 1, nota: 'transferencia interna' });
+  rows += row('− Combustible', combObras > 0 ? 'real' : 'pend', combObras > 0 ? combObras : null, 'neg', { indent: 1, nota: 'entregas de combustible' });
   rows += row('= Margen Obras', margenObrasStatus, margenObras, 'res', { isTotal: true });
 
   // TALLER
@@ -6954,6 +7032,7 @@ function renderRentabilidad() {
   rows += row('+ Alquiler a terceros (Alquiler de equipos)', alqExterno > 0 ? 'real' : 'pend', alqExterno > 0 ? alqExterno : null, '', { nota: 'ingreso real, no cancela' });
   rows += row('− Mano de obra Taller', moTaller != null ? 'real' : 'pend', moTaller, 'neg', { indent: 1 });
   rows += row('− Repuestos de máquinas', repTallerMes != null ? 'real' : 'pend', repTallerMes, 'neg', { indent: 1, nota: repTallerMes != null ? 'entregas de repuestos (Nico)' : 'sin datos del mes' });
+  rows += row('− Combustible', combTallerR > 0 ? 'real' : 'pend', combTallerR > 0 ? combTallerR : null, 'neg', { indent: 1, nota: 'taller + alquiler a terceros' });
   rows += row('= Resultado Taller', resultTaller != null ? (repTallerMes != null ? 'parcial' : 'parcial') : 'pend', resultTaller, 'res', { isTotal: true, nota: repTallerMes != null ? 'incluye repuestos' : 'sin repuestos del mes' });
 
   // PLANTA
@@ -6968,6 +7047,7 @@ function renderRentabilidad() {
   rows += row('− OC Insumos planta', ocPlanta != null ? 'real' : 'pend', ocPlanta, 'neg', { indent: 1 });
   rows += row('− Mano de obra Planta', moPlanta != null ? (moPlantaReal == null ? 'aprox' : 'real') : 'pend', moPlanta, 'neg', { indent: 1, nota: moPlantaReal == null && moPlantaEstObj ? 'estimado — base ' + (MES[moPlantaEstObj.refMes] || moPlantaEstObj.refMes) : '' });
   rows += row('− Alquiler equipos (Cantera / Trituración / Planta) ↕', alqPlantaMes > 0 ? 'real' : 'pend', alqPlantaMes > 0 ? alqPlantaMes : null, 'neg', { indent: 1, nota: 'transferencia interna' });
+  rows += row('− Combustible', combPlantaR > 0 ? 'real' : 'pend', combPlantaR > 0 ? combPlantaR : null, 'neg', { indent: 1, nota: 'planta, trituración, cantera y predio (cargador)' });
   const resultPlantaStatus = ingPlanta != null ? (egresosPlanta > 0 ? 'parcial' : 'real') : 'pend';
   const resultPlantaVal    = ingPlanta != null ? resultPlanta : (egresosPlanta > 0 ? -egresosPlanta : null);
   const resultPlantaNota   = ingPlanta != null ? '' : 'solo egresos conocidos';
@@ -11936,6 +12016,7 @@ function renderAll() {
   renderMOClasif();
   renderAlquilerEquipos();
   renderPlanta();
+  renderCombustibleUnidades();
   renderPipeline();
   renderCostoFinanciero();
   renderOCPlanta();
