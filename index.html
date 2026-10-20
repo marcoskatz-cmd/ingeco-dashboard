@@ -3082,7 +3082,7 @@ function computeMargenObrasMes(mes) {
   if (COMBUSTIBLE && COMBUSTIBLE[mes] && COMBUSTIBLE[mes].porObra) {
     COMBUSTIBLE[mes].porObra.forEach(item => {
       const k = (item.obra || '').toLowerCase().trim();
-      if (!k || _combNoObra.has(k)) return;
+      if (!k || _combNoObra.has(k) || !(item.monto > 0)) return; // solo flete (batea): no es costo
       combPorNombre[k] = (combPorNombre[k] || 0) + item.monto;
       combDet[k] = item;
       if (!combDisplay[k]) combDisplay[k] = (item.obra || '').trim();
@@ -3432,9 +3432,10 @@ function openCombustibleObra(codObra, nombreObra, mesOver) {
   if (!panel || !content) return;
   const ks = [codObra, nombreObra].map(x => (x || '').toLowerCase().trim()).filter(Boolean);
   const meses = mesP === 'total' ? MES_ORDER.filter(m => COMBUSTIBLE[m]) : [mesP];
-  let tot = 0, lit = 0, eqp = 0, veh = 0, n = 0; const porEq = {};
+  let tot = 0, lit = 0, eqp = 0, veh = 0, n = 0; const porEq = {}, flete = { monto: 0, litros: 0, n: 0 };
   meses.forEach(m => ((COMBUSTIBLE[m] && COMBUSTIBLE[m].porObra) || []).forEach(it => {
     if (!ks.includes((it.obra || '').toLowerCase().trim())) return;
+    flete.monto += it.flete || 0; flete.litros += it.fleteLitros || 0; flete.n += it.fleteN || 0;
     tot += it.monto; lit += it.litros || 0; eqp += it.equipos || 0; veh += it.vehiculos || 0; n += it.n || 0;
     (it.top || []).forEach(e => { const a = porEq[e.equipo] || (porEq[e.equipo] = { monto: 0, litros: 0 }); a.monto += e.monto; a.litros += e.litros || 0; });
   }));
@@ -3451,6 +3452,7 @@ function openCombustibleObra(codObra, nombreObra, mesOver) {
     <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;">PRINCIPALES EQUIPOS / VEHÍCULOS</div>
     ${eqs.map(([eq, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);"><span>${_esc(eq)} <span style="color:var(--muted);font-size:10.5px;">${Math.round(v.litros).toLocaleString('es-AR')} L</span></span><strong class="neg-val">${fmt(v.monto)}</strong></div>`).join('')}`
     : '<p class="nd" style="padding:16px 0;">Sin combustible cargado a esta obra en el período.</p>'}
+    ${_combFleteHTML(flete)}
     <div class="nota-fuente" style="margin-top:12px;">Fuente: <a href="${SHEET_URLS_AUDIT.combLeandro}" target="_blank" rel="noopener">tanque propio (Leandro Casares)</a> · <a href="${SHEET_URLS_AUDIT.combTiburcio}" target="_blank" rel="noopener">Tiburcio Sanz</a> · <a href="${SHEET_URLS_AUDIT.combHerrero}" target="_blank" rel="noopener">Carlos Herrero</a>, columna OBRA GENERAL. El alquiler interno de equipos no incluye combustible.</div>`;
   panel.classList.add('open'); overlay.classList.add('open');
 }
@@ -3465,15 +3467,27 @@ const COMB_UNIDADES = {
 function _combUnidad(unidad, mes) {
   const u = COMB_UNIDADES[unidad]; if (!u) return null;
   const meses = mes === 'total' ? MES_ORDER.filter(m => COMBUSTIBLE[m]) : [mes];
-  let total = 0, litros = 0, n = 0, hay = false; const porSector = {}, porEq = {};
+  let total = 0, litros = 0, n = 0, hay = false; const porSector = {}, porEq = {}, flete = { monto: 0, litros: 0, n: 0 };
   meses.forEach(m => ((COMBUSTIBLE[m] && COMBUSTIBLE[m].porObra) || []).forEach(it => {
     const k = (it.obra || '').toLowerCase().trim();
     if (!u.sectores.includes(k)) return;
+    flete.monto += it.flete || 0; flete.litros += it.fleteLitros || 0; flete.n += it.fleteN || 0;
+    if (!(it.monto > 0)) return;
     hay = true; total += it.monto; litros += it.litros || 0; n += it.n || 0;
     porSector[it.obra] = (porSector[it.obra] || 0) + it.monto;
     (it.top || []).forEach(e => { const a = porEq[e.equipo] || (porEq[e.equipo] = { monto: 0, litros: 0 }); a.monto += e.monto; a.litros += e.litros || 0; });
   }));
-  return hay ? { total, litros, n, porSector, porEq } : null;
+  return (hay || flete.monto > 0) ? { total, litros, n, porSector, porEq, flete } : null;
+}
+// Camión batea (planilla de Leandro): no es costo de INGECO, se le descuenta al
+// fletero del pago del flete. No suma en ningún total; solo se informa (oct-2026).
+function _combFleteHTML(f, alcance) {
+  if (!f || !(f.monto > 0)) return '';
+  return `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:10px 12px;margin:14px 0 4px;">
+    <div style="font-size:10px;font-weight:700;color:#92400e;">FLETE · CAMIÓN BATEA (A DESCONTAR)${alcance ? ' · ' + alcance.toUpperCase() : ''}</div>
+    <div style="font-size:18px;font-weight:800;color:#92400e;">${fmt(f.monto)}</div>
+    <div style="font-size:11px;color:#78350f;">${Math.round(f.litros).toLocaleString('es-AR')} litros${f.n ? ' · ' + f.n + ' carga' + (f.n !== 1 ? 's' : '') : ''} · no suma en el total: se descuenta del pago a los fleteros</div>
+  </div>`;
 }
 function renderCombustibleUnidades() {
   [['planta', 'kpi-planta-comb'], ['taller', 'kpi-taller-comb']].forEach(([u, id]) => {
@@ -3502,6 +3516,12 @@ function openCombustibleUnidad(unidad) {
     <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;">POR SECTOR</div>${filasSec}
     <div style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 4px;">PRINCIPALES EQUIPOS</div>${filasEq}`
     : '<p class="nd" style="padding:16px 0;">Sin combustible cargado en el período.</p>'}
+    ${(() => { // el flete se descuenta al fletero por el total del mes, no por sector
+      const ms = mesActual === 'total' ? MES_ORDER.filter(m => COMBUSTIBLE[m]) : [mesActual];
+      const f = { monto: 0, litros: 0, n: 0 };
+      ms.forEach(m => ((COMBUSTIBLE[m] && COMBUSTIBLE[m].porObra) || []).forEach(it => { f.monto += it.flete || 0; f.litros += it.fleteLitros || 0; f.n += it.fleteN || 0; }));
+      return _combFleteHTML(f, 'total del período, todas las obras');
+    })()}
     <div class="nota-fuente" style="margin-top:12px;">${unidad === 'planta' ? 'El combustible de Predio Warnes es del cargador frontal que trabaja para la Planta, por eso se suma acá. ' : ''}Se resta en Rentabilidad → Resultado ${unidad === 'planta' ? 'Planta' : 'Taller'}. Fuente: <a href="${SHEET_URLS_AUDIT.combLeandro}" target="_blank" rel="noopener">tanque propio (Leandro Casares)</a> · <a href="${SHEET_URLS_AUDIT.combTiburcio}" target="_blank" rel="noopener">Tiburcio Sanz</a> · <a href="${SHEET_URLS_AUDIT.combHerrero}" target="_blank" rel="noopener">Carlos Herrero</a>.</div>`;
   panel.classList.add('open'); overlay.classList.add('open');
 }

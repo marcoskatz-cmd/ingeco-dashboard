@@ -1434,8 +1434,9 @@ function leerOCDetalle() {
 // ============================================================
 function leerCombustible() {
   const fuentes = [
-    // Tanque propio: se excluyen los "Camión batea" (fleteros): ese combustible
-    // se les descuenta después del pago del flete, no es costo de INGECO (María, oct-2026)
+    // Tanque propio: los "Camión batea" (fleteros) NO suman: ese combustible se
+    // les descuenta del pago del flete (María, oct-2026). Se guardan aparte
+    // (campo flete) para mostrar en el detalle cuánto hay que descontar.
     { id: FILE_IDS.combLeandro,  origen: 'equipos', excluirEquipo: /cami[oó]n\s+batea/i },
     { id: FILE_IDS.combTiburcio, origen: 'vehiculos' },
     { id: FILE_IDS.combHerrero,  origen: 'vehiculos' },
@@ -1464,13 +1465,18 @@ function leerCombustible() {
         const obra = String(r[cO] || '').trim() || 'Obra no disponible';
         const cod = cC != null ? String(r[cC] || '').trim() : '';
         let eq = cE != null ? String(r[cE] || '').trim() : '';
-        if (f.excluirEquipo && f.excluirEquipo.test(eq)) continue;
+        const esFlete = !!(f.excluirEquipo && f.excluirEquipo.test(eq));
         if (cod && eq.indexOf(cod) !== 0) eq = cod + (eq ? ' — ' + eq : '');
         eq = eq || 'Sin especificar';
-        if (!acum[mes]) acum[mes] = { total: 0, litros: 0, n: 0, obras: {} };
+        if (!acum[mes]) acum[mes] = { total: 0, litros: 0, n: 0, flete: 0, fleteLitros: 0, obras: {} };
         const m = acum[mes];
+        const o = m.obras[obra] || (m.obras[obra] = { monto: 0, litros: 0, n: 0, equipos: 0, vehiculos: 0, flete: 0, fleteLitros: 0, fleteN: 0, eq: {} });
+        if (esFlete) {
+          m.flete += monto; m.fleteLitros += litros;
+          o.flete += monto; o.fleteLitros += litros; o.fleteN++;
+          continue;
+        }
         m.total += monto; m.litros += litros; m.n++;
-        const o = m.obras[obra] || (m.obras[obra] = { monto: 0, litros: 0, n: 0, equipos: 0, vehiculos: 0, eq: {} });
         o.monto += monto; o.litros += litros; o.n++; o[f.origen] += monto;
         const e = o.eq[eq] || (o.eq[eq] = { monto: 0, litros: 0 });
         e.monto += monto; e.litros += litros;
@@ -1480,11 +1486,12 @@ function leerCombustible() {
   const out = {};
   Object.keys(acum).forEach(function(mes) {
     const m = acum[mes];
-    out[mes] = { total: Math.round(m.total), litros: Math.round(m.litros), n: m.n,
+    out[mes] = { total: Math.round(m.total), litros: Math.round(m.litros), n: m.n, flete: Math.round(m.flete), fleteLitros: Math.round(m.fleteLitros),
       porObra: Object.keys(m.obras).map(function(nom) {
         const o = m.obras[nom];
         return { obra: nom, monto: Math.round(o.monto), litros: Math.round(o.litros), n: o.n,
           equipos: Math.round(o.equipos), vehiculos: Math.round(o.vehiculos),
+          flete: Math.round(o.flete), fleteLitros: Math.round(o.fleteLitros), fleteN: o.fleteN,
           top: Object.keys(o.eq).map(function(k) { return { equipo: k.slice(0, 60), monto: Math.round(o.eq[k].monto), litros: Math.round(o.eq[k].litros) }; })
             .sort(function(a, b) { return b.monto - a.monto; }).slice(0, 8) };
       }).sort(function(a, b) { return b.monto - a.monto; }) };
