@@ -1434,7 +1434,9 @@ function leerOCDetalle() {
 // ============================================================
 function leerCombustible() {
   const fuentes = [
-    { id: FILE_IDS.combLeandro,  origen: 'equipos' },
+    // Tanque propio: se excluyen los "Camión batea" (fleteros): ese combustible
+    // se les descuenta después del pago del flete, no es costo de INGECO (María, oct-2026)
+    { id: FILE_IDS.combLeandro,  origen: 'equipos', excluirEquipo: /cami[oó]n\s+batea/i },
     { id: FILE_IDS.combTiburcio, origen: 'vehiculos' },
     { id: FILE_IDS.combHerrero,  origen: 'vehiculos' },
   ];
@@ -1462,6 +1464,7 @@ function leerCombustible() {
         const obra = String(r[cO] || '').trim() || 'Obra no disponible';
         const cod = cC != null ? String(r[cC] || '').trim() : '';
         let eq = cE != null ? String(r[cE] || '').trim() : '';
+        if (f.excluirEquipo && f.excluirEquipo.test(eq)) continue;
         if (cod && eq.indexOf(cod) !== 0) eq = cod + (eq ? ' — ' + eq : '');
         eq = eq || 'Sin especificar';
         if (!acum[mes]) acum[mes] = { total: 0, litros: 0, n: 0, obras: {} };
