@@ -985,7 +985,7 @@
       <div class="kpi-label">Contribución marginal</div>
       <div class="kpi-value nd" id="kpi-margen-est">sin dato</div>
       <div class="kpi-sub" id="kpi-margen-sub">Pendiente de archivos de costo</div>
-      <div class="fuente" id="kpi-margen-formula">Generado − (Insumos + MO propia + Costo asfalto + Alquiler)</div>
+      <div class="fuente" id="kpi-margen-formula">Generado − (Insumos + MO propia + Costo asfalto + Alquiler + Combustible)</div>
     </div>
   </div>
 
@@ -1033,12 +1033,13 @@
             <th class="num" title="Mano de obra PROPIA de la obra (TANGO): imputada por obra desde jul-2026, antes prorrateada. La mano de obra tercerizada (OC de Guillermo) va dentro de Insumos.">MO (propia)</th>
             <th class="num">Asfalto (tn)</th>
             <th class="num">Alquiler</th>
-            <th class="num" id="th-margen-mensual" title="Contribución marginal del mes: Generado − costos directos (insumos, MO propia, asfalto, alquiler), antes de gastos de estructura">Contrib. marginal mensual</th>
+            <th class="num" title="Combustible cargado a la obra (planillas de entregas de combustible: tanque propio y estaciones). El alquiler de equipos no incluye combustible.">Combustible</th>
+            <th class="num" id="th-margen-mensual" title="Contribución marginal del mes: Generado − costos directos (insumos, MO propia, asfalto, alquiler, combustible), antes de gastos de estructura">Contrib. marginal mensual</th>
             <th class="num" id="th-margen-acum" title="Contribución marginal total de la obra — solo meses cerrados, mismo criterio que el historial. Click para ver el detalle mes a mes">Contrib. marginal total</th>
           </tr>
         </thead>
         <tbody id="tbody-resumen-obra">
-          <tr><td colspan="8" class="nd" style="text-align:center;padding:20px;">Presioná "Actualizar datos" para cargar desde Drive</td></tr>
+          <tr><td colspan="9" class="nd" style="text-align:center;padding:20px;">Presioná "Actualizar datos" para cargar desde Drive</td></tr>
         </tbody>
       </table>
       <div class="nota-fuente" style="margin-top:6px;">⚖️ <strong>MO Asfalto:</strong> desde jul-2026, imputada por obra según la col. OBRA (R) de TANGO (ambas quincenas). Hasta junio, o si TANGO no está cargado, se prorratea: MO total Obras × (tn de asfalto de la obra / tn total del mes)</div>
@@ -1494,7 +1495,8 @@
             <div class="org-tasks">
               <div class="org-task"><a href="https://docs.google.com/spreadsheets/d/1e_emRVEUxTaNtLxeC0wXIWKzcKuoulZkFSS9O1e0XHo/edit" target="_blank">Partes diarios equipos</a></div>
               <div class="org-task"><a href="https://docs.google.com/spreadsheets/d/1JpXjGTJwlvMuEI-rFTd4KeKvzd708-yuSLAhIRuCFC0/edit?gid=320539838" target="_blank">Compra repuestos</a></div>
-              <div class="org-task">Carga de Partes diarios y compra de repuestos de máquinas</div>
+              <div class="org-task">⛽ Entregas de combustible: <a href="https://docs.google.com/spreadsheets/d/19eyY8MImPM_-Gyzj8QcqA_yR5KDrkuu-1faJUU48N1A/edit" target="_blank" rel="noopener">tanque (Leandro Casares)</a> · <a href="https://docs.google.com/spreadsheets/d/1DD8BVoF6jX-CcakbbVO6fNJKYF82qBIK1YwyVLQcDJ8/edit" target="_blank" rel="noopener">Tiburcio Sanz</a> · <a href="https://docs.google.com/spreadsheets/d/1GB_oiL40fEXHXzhmor3ztnnriiikX1xp3fG-F5Uuw5E/edit" target="_blank" rel="noopener">Carlos Herrero</a></div>
+              <div class="org-task">Carga de Partes diarios, compra de repuestos y entregas de combustible</div>
             </div>
           </div>
           <div class="org-vline"></div>
@@ -2265,6 +2267,9 @@ function borrarAjustePrecio(desde) {
 // Gastos de Estructura (libro mayor admin.) — se carga desde Apps Script
 // { jun: { total, porCuenta: [{codigo, nombre, cuenta, total, nFacturas, facturas: [{fecha, proveedor, comprobante, monto}]}] } }
 let GASTOS_ESTRUCTURA = {};
+// Combustible por mes y obra (planillas ENTREGAS DE COMBUSTIBLE, oct-2026):
+// { mes: { total, litros, n, porObra: [{obra, monto, litros, n, equipos, vehiculos, top}] } }
+let COMBUSTIBLE = {};
 // Compra de repuestos de máquinas (Nico) — costo del Taller. Desde Apps Script.
 // { abr: { total, items: [{codEq, costo}] }, ... }
 let REPUESTOS_EQUIPOS = {};
@@ -2512,6 +2517,9 @@ const FUENTES = [
   // ── Equipos / Taller ──────────────────────────────────────────────────
   { archivo: 'Tarifas de equipos + PF mensual (Google Sheet)', responsable: 'Agustín', fileKey: 'equiposFlota', ultimaActualizacion: '02/07/2026', estado: 'real', dato: 'PF (USD) por equipo — tarifa del alquiler interno de maquinaria', accion: '✅ Accesible — datos cargados' },
   { archivo: 'PARTES DIARIOS DE EQUIPOS (Google Sheet)', responsable: 'Nicolás Dall\'Agata', fileKey: 'usageEquipos', ultimaActualizacion: '28/07/2026', estado: 'real', dato: 'Horas por equipo y obra — base del alquiler interno prorrateado', accion: '✅ Accesible — datos cargados' },
+  { archivo: 'ENTREGAS DE COMBUSTIBLE — Leandro Casares (tanque propio)', responsable: 'Nicolás Dall\'Agata', fileKey: 'combLeandro', ultimaActualizacion: '20/10/2026', estado: 'real', dato: 'Cargas de combustible a equipos y camiones, por obra (OBRA GENERAL) — costo directo de cada obra', accion: '✅ Accesible — columna Combustible en Contribución marginal' },
+  { archivo: 'ENTREGAS DE COMBUSTIBLE — Tiburcio Sanz (estación)', responsable: 'Nicolás Dall\'Agata', fileKey: 'combTiburcio', ultimaActualizacion: '19/10/2026', estado: 'real', dato: 'Cargas a camionetas, vehículos particulares y bidones, por obra', accion: '✅ Accesible — columna Combustible en Contribución marginal' },
+  { archivo: 'ENTREGAS DE COMBUSTIBLE — Carlos Herrero (estación Quilmes)', responsable: 'Nicolás Dall\'Agata', fileKey: 'combHerrero', ultimaActualizacion: '20/10/2026', estado: 'real', dato: 'Cargas a camionetas y bidones de Ruta 357, por obra', accion: '✅ Accesible — columna Combustible en Contribución marginal' },
   { archivo: 'ENTREGAS DE REPUESTOS (Google Sheet)', responsable: 'Nicolás Dall\'Agata', fileKey: 'repuestosEquipos', ultimaActualizacion: '27/07/2026', estado: 'real', dato: 'Compra de repuestos de máquinas — costo del Taller', accion: '✅ Accesible — datos cargados' },
   { archivo: 'ÓC Repuestos para Equipos (Alberto Lescano)', responsable: 'Alberto Lescano', fileKey: null, ultimaActualizacion: '29/04/2026', estado: 'real', dato: 'OC planta asfalto y equipos', accion: '✅ Cargado — carga manual (snapshot abril), no se actualiza sola' },
   // ── Estructura ────────────────────────────────────────────────────────
@@ -2586,8 +2594,8 @@ function renderMargen() {
   const _sumMg = f => _filasMg.reduce((a, r) => a + (f(r) || 0), 0);
   const totalACobrar = _filasMg.length > 0 ? _sumMg(r => r.aCobrar) : null;
   const mgInsumos = _sumMg(r => r.insumos), mgMO = _sumMg(r => r.moObra), mgMOH = _sumMg(r => r.moHormigon),
-        mgAsf = _sumMg(r => r.costoAsfObra), mgAlq = _sumMg(r => r.alquiler);
-  const totalEgresosConAlq = _filasMg.length > 0 ? (mgInsumos + mgMO + mgAsf + mgAlq) : null;
+        mgAsf = _sumMg(r => r.costoAsfObra), mgAlq = _sumMg(r => r.alquiler), mgComb = _sumMg(r => r.combustible);
+  const totalEgresosConAlq = _filasMg.length > 0 ? (mgInsumos + mgMO + mgAsf + mgAlq + mgComb) : null;
 
   const kpiOC = document.getElementById('kpi-oc-insumos');
   if (kpiOC) {
@@ -3054,6 +3062,20 @@ function computeMargenObrasMes(mes) {
     });
   }
 
+  // Combustible del mes por obra (OBRA GENERAL de las planillas de entregas).
+  // El alquiler interno de equipos NO incluye combustible (Marcos, oct-2026):
+  // es un costo directo de la obra, aparte.
+  const combPorNombre = {}, combDisplay = {}, combDet = {};
+  if (COMBUSTIBLE && COMBUSTIBLE[mes] && COMBUSTIBLE[mes].porObra) {
+    COMBUSTIBLE[mes].porObra.forEach(item => {
+      const k = (item.obra || '').toLowerCase().trim();
+      if (!k) return;
+      combPorNombre[k] = (combPorNombre[k] || 0) + item.monto;
+      combDet[k] = item;
+      if (!combDisplay[k]) combDisplay[k] = (item.obra || '').trim();
+    });
+  }
+
   // MO total mensual — usa dato real si existe, estimado si no
   const moArr2     = getMOObra(mes);
   const moReal     = moArr2.length > 0 ? moArr2.reduce((s, r) => s + r.monto, 0) : null;
@@ -3143,6 +3165,8 @@ function computeMargenObrasMes(mes) {
     const moHormigon = mohPorNombre[ck] || mohPorNombre[nk] || 0;
     const insumos    = insumosOC + moHormigon;
     const alquiler = alqPorNombre[ck] || alqPorNombre[nk] || 0;
+    const combustible = combPorNombre[ck] || combPorNombre[nk] || 0;
+    const combustibleDet = combDet[ck] || combDet[nk] || null;
     const tnObra     = tnPorObraKey[ck]     || tnPorObraKey[nk]     || 0;
     const tnFrioObra = tnFrioPorObraKey[ck] || tnFrioPorObraKey[nk] || 0;
     const tnCarpeta  = tnCarpetaPorObraKey[ck] || tnCarpetaPorObraKey[nk] || 0;
@@ -3180,9 +3204,9 @@ function computeMargenObrasMes(mes) {
     const periodoAj = _ajustePeriodosProvision(mes, o.cod_obra || o.nombre);
     if (periodoAj.montoIn || periodoAj.montoOut) certTeorica = Math.max(0, certTeorica - periodoAj.montoOut + periodoAj.montoIn);
     const precioAsf = precioMesResumen; // para mostrar fuente/arrastre en la celda
-    const margen  = aCobrar - insumos - (moObra || 0) - (costoAsfObra || 0) - alquiler;
-    const hasData = aCobrar > 0 || insumos > 0 || moHormigon > 0 || alquiler > 0 || tnObraTotal > 0 || moObra != null;
-    return { o, aCobrar, certTeorica, periodoAj, insumos, insumosOC, moHormigon, alquiler, tnObra: tnObraC, tnFrioObra: tnFrioC, tnCarpeta, tnBacheo, tnDet, tnCat, tnObraTotal, moObra, moImputada, costoAsfObra, precioAsf, margen, hasData, extra: !!extra };
+    const margen  = aCobrar - insumos - (moObra || 0) - (costoAsfObra || 0) - alquiler - combustible;
+    const hasData = aCobrar > 0 || insumos > 0 || moHormigon > 0 || alquiler > 0 || combustible > 0 || tnObraTotal > 0 || moObra != null;
+    return { o, aCobrar, certTeorica, periodoAj, insumos, insumosOC, moHormigon, alquiler, combustible, combustibleDet, tnObra: tnObraC, tnFrioObra: tnFrioC, tnCarpeta, tnBacheo, tnDet, tnCat, tnObraTotal, moObra, moImputada, costoAsfObra, precioAsf, margen, hasData, extra: !!extra };
   };
 
   const rows = obras.map(o => buildDatosObra(o, false));
@@ -3220,6 +3244,8 @@ function computeMargenObrasMes(mes) {
   Object.keys(alqDisplay).forEach(k => candidatos.push({ cod: alqDisplay[k] || k, nombre: '', origen: 'Alquiler' }));
   // MO imputada (TANGO col. OBRA) a obras que no certifican este mes
   if (moImputada) Object.keys(moDisplayName).forEach(k => candidatos.push({ cod: moDisplayName[k] || k, nombre: '', origen: 'MO' }));
+  // Combustible cargado a obras que no certifican este mes
+  Object.keys(combDisplay).forEach(k => candidatos.push({ cod: combDisplay[k] || k, nombre: '', origen: 'Combustible' }));
 
   // Construir filas extra deduplicando por clave (nombre o código ya representado)
   candidatos.forEach(c => {
@@ -3237,7 +3263,7 @@ function computeMargenObrasMes(mes) {
     const esSinAsignar = /^obra no disponible$/i.test((c.cod || c.nombre || '').trim());
     const sinClasificar = esInterno && !esSinAsignar && !esCentroInternoConocido(c.cod) && !esCentroInternoConocido(c.nombre);
     if (esInterno && !sinClasificar && !esSinAsignar) return;
-    const _lblOrigen = { 'OC': 'Con OC de insumos', 'Remito': 'Con salida en Remitos', 'Alquiler': 'Con alquiler de maquinaria', 'MO': 'Con mano de obra imputada' };
+    const _lblOrigen = { 'OC': 'Con OC de insumos', 'Remito': 'Con salida en Remitos', 'Alquiler': 'Con alquiler de maquinaria', 'MO': 'Con mano de obra imputada', 'Combustible': 'Con combustible cargado' };
     const nombreFila = esSinAsignar
       ? 'Sin obra asignada — completar en la planilla de origen'
       : sinClasificar
@@ -3268,7 +3294,7 @@ function computeMargenObrasMes(mes) {
 function computeMargenObrasTotal() {
   const meses = MES_ORDER.filter(m =>
     (GENERADO_POR_OBRA && GENERADO_POR_OBRA.obrasPorMes && GENERADO_POR_OBRA.obrasPorMes[m]) ||
-    (OC_INSUMOS[m] && OC_INSUMOS[m].items) || ALQUILER_EQUIPOS[m] || REMITOS_ASFALTO[m]);
+    (OC_INSUMOS[m] && OC_INSUMOS[m].items) || ALQUILER_EQUIPOS[m] || REMITOS_ASFALTO[m] || COMBUSTIBLE[m]);
   if (meses.length === 0) return null;
 
   const porObra = {};
@@ -3283,7 +3309,7 @@ function computeMargenObrasTotal() {
       const key = ((r.o.cod_obra || r.o.nombre || '') + '').toLowerCase().trim();
       let acc = porObra[key];
       if (!acc) {
-        acc = porObra[key] = { o: Object.assign({}, r.o), aCobrar: 0, insumos: 0, insumosOC: 0, moHormigon: 0, alquiler: 0,
+        acc = porObra[key] = { o: Object.assign({}, r.o), aCobrar: 0, insumos: 0, insumosOC: 0, moHormigon: 0, alquiler: 0, combustible: 0,
           tnObra: 0, tnFrioObra: 0, tnCarpeta: 0, tnBacheo: 0, tnDet: [], tnCat: [], tnObraTotal: 0, moObra: null, costoAsfObra: null,
           certTeorica: 0, precioAsf: null, margen: 0, hasData: false, extra: r.extra,
           // Mismo criterio que la vista mensual: las provisiones / placeholders
@@ -3299,6 +3325,7 @@ function computeMargenObrasTotal() {
       acc.insumos  += r.insumos;
       acc.moHormigon += r.moHormigon || 0;
       acc.alquiler += r.alquiler;
+      acc.combustible += r.combustible || 0;
       acc.tnObra   += r.tnObra;
       acc.tnFrioObra  += r.tnFrioObra;
       acc.tnCarpeta   += r.tnCarpeta || 0;
@@ -3376,6 +3403,7 @@ function _filaMargenHTML(r, moEsEstim, tnTotalGlobal) {
       <td class="num" style="${cellStyle}" ${hoverTip} onclick="openDetalleCelda('mo','${codEsc2}','${nomEsc}')">${moCell}</td>
       <td class="num" style="${cellStyle}" ${hoverTip} onclick="openDetalleCelda('tn','${codEsc2}','${nomEsc}')">${tnCell}</td>
       <td class="num" style="${cellStyle}" ${hoverTip} onclick="openDetalleCelda('alquiler','${codEsc2}','${nomEsc}')">${r.alquiler > 0 ? `<span class="neg-val" style="text-decoration:underline dotted;">${fmt(r.alquiler)}</span>` : '<span class="nd">—</span>'}</td>
+      <td class="num" style="${cellStyle}" title="Click para ver el combustible por equipo" onclick="openCombustibleObra('${codEsc2}','${nomEsc}')">${r.combustible > 0 ? `<span class="neg-val" style="text-decoration:underline dotted;">${fmt(r.combustible)}</span>` : '<span class="nd">—</span>'}</td>
       <td class="num" style="background:${r.margen > 0 ? '#f0fdf4' : r.margen < 0 ? '#fef2f2' : 'transparent'};"><strong class="${mgColor}">${fmt(r.margen)}</strong></td>
       ${mesActual === 'total' ? '' : `<td class="num" style="${cellStyle}background:${r.margenAcum > 0 ? '#f0fdf4' : r.margenAcum < 0 ? '#fef2f2' : 'transparent'};" title="Contribución marginal total — solo meses cerrados. Click para el historial mes a mes" onclick="openHistorialObra('${codEsc2}','${nomEsc}')">${r.margenAcum != null ? `<strong class="${r.margenAcum > 0 ? 'pos-val' : r.margenAcum < 0 ? 'neg-val' : ''}" style="text-decoration:underline dotted;">${fmt(r.margenAcum)}</strong>` : '<span class="nd">—</span>'}</td>`}
     </tr>`;
@@ -3384,6 +3412,36 @@ function _filaMargenHTML(r, moEsEstim, tnTotalGlobal) {
 // Margen acumulado por obra — SOLO meses cerrados (mismo criterio que el
 // historial y el estado de resultados: el mes en curso y lo programado a
 // futuro no cuentan). Devuelve { claveObra: margen }.
+// Panel: combustible de una obra en el mes (por equipo, tanque vs estaciones)
+function openCombustibleObra(codObra, nombreObra, mesOver) {
+  const mesP = mesOver || mesActual;
+  const panel = document.getElementById('sidePanel'), overlay = document.getElementById('overlay'), content = document.getElementById('panelContent');
+  if (!panel || !content) return;
+  const ks = [codObra, nombreObra].map(x => (x || '').toLowerCase().trim()).filter(Boolean);
+  const meses = mesP === 'total' ? MES_ORDER.filter(m => COMBUSTIBLE[m]) : [mesP];
+  let tot = 0, lit = 0, eqp = 0, veh = 0, n = 0; const porEq = {};
+  meses.forEach(m => ((COMBUSTIBLE[m] && COMBUSTIBLE[m].porObra) || []).forEach(it => {
+    if (!ks.includes((it.obra || '').toLowerCase().trim())) return;
+    tot += it.monto; lit += it.litros || 0; eqp += it.equipos || 0; veh += it.vehiculos || 0; n += it.n || 0;
+    (it.top || []).forEach(e => { const a = porEq[e.equipo] || (porEq[e.equipo] = { monto: 0, litros: 0 }); a.monto += e.monto; a.litros += e.litros || 0; });
+  }));
+  const eqs = Object.entries(porEq).sort((a, b) => b[1].monto - a[1].monto).slice(0, 12);
+  content.innerHTML = `
+    <div class="panel-title">Combustible · ${_esc(nombreObra || codObra)}</div>
+    <div class="panel-sub">${mesP === 'total' ? 'Todos los meses' : (MES[mesP] || mesP)} · planillas de entregas de combustible</div>
+    ${tot > 0 ? `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;">
+      <div style="flex:1;min-width:130px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--muted);">TOTAL</div><div class="neg-val" style="font-size:20px;font-weight:800;">${fmt(tot)}</div><div style="font-size:11px;color:var(--muted);">${Math.round(lit).toLocaleString('es-AR')} litros · ${n} carga${n !== 1 ? 's' : ''}</div></div>
+      <div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--muted);">EQUIPOS (TANQUE PROPIO)</div><div style="font-size:16px;font-weight:700;">${fmt(eqp)}</div></div>
+      <div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--muted);">VEHÍCULOS (ESTACIONES)</div><div style="font-size:16px;font-weight:700;">${fmt(veh)}</div></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;">PRINCIPALES EQUIPOS / VEHÍCULOS</div>
+    ${eqs.map(([eq, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);"><span>${_esc(eq)} <span style="color:var(--muted);font-size:10.5px;">${Math.round(v.litros).toLocaleString('es-AR')} L</span></span><strong class="neg-val">${fmt(v.monto)}</strong></div>`).join('')}`
+    : '<p class="nd" style="padding:16px 0;">Sin combustible cargado a esta obra en el período.</p>'}
+    <div class="nota-fuente" style="margin-top:12px;">Fuente: <a href="${SHEET_URLS_AUDIT.combLeandro}" target="_blank" rel="noopener">tanque propio (Leandro Casares)</a> · <a href="${SHEET_URLS_AUDIT.combTiburcio}" target="_blank" rel="noopener">Tiburcio Sanz</a> · <a href="${SHEET_URLS_AUDIT.combHerrero}" target="_blank" rel="noopener">Carlos Herrero</a>, columna OBRA GENERAL. El alquiler interno de equipos no incluye combustible.</div>`;
+  panel.classList.add('open'); overlay.classList.add('open');
+}
+
 function _margenAcumPorObra() {
   const idxHoy = new Date().getMonth();
   const acum = {};
@@ -4200,11 +4258,11 @@ function renderResumenObra() {
   if (thAc) thAc.style.display = mesActual === 'total' ? 'none' : '';
   const otrosGastosDivEl = document.getElementById('otros-gastos-obra');
   if (tbody && !datos) {
-    tbody.innerHTML = '<tr><td colspan="8" class="nd" style="text-align:center;padding:20px;">Presioná "Actualizar datos" para cargar desde Drive</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="nd" style="text-align:center;padding:20px;">Presioná "Actualizar datos" para cargar desde Drive</td></tr>';
     if (otrosGastosDivEl) otrosGastosDivEl.innerHTML = '';
     const _atd1 = document.getElementById('alquiler-terceros-obra'); if (_atd1) _atd1.innerHTML = '';
   } else if (tbody && busq && !datos.rows.some(r => _obraPasaFiltro('obra', r.o))) {
-    tbody.innerHTML = `<tr><td colspan="8" class="nd" style="text-align:center;padding:20px;">Sin obras que coincidan con el filtro en este período — probá "Ver todas" o cambiá de mes</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="nd" style="text-align:center;padding:20px;">Sin obras que coincidan con el filtro en este período — probá "Ver todas" o cambiá de mes</td></tr>`;
     renderChartsObra({ insumos: [], mo: [], alquiler: [], tn: [] });
     if (otrosGastosDivEl) otrosGastosDivEl.innerHTML = '';
     const _atd2 = document.getElementById('alquiler-terceros-obra'); if (_atd2) _atd2.innerHTML = '';
@@ -4219,7 +4277,7 @@ function renderResumenObra() {
       r.margenAcum = (k && k in _acumMap) ? _acumMap[k] : null;
     });
 
-    let sumaCobrar = 0, sumaInsumos = 0, sumaAlquiler = 0, sumaTn = 0, sumaMO = 0, sumaMOH = 0, sumaAsf = 0, sumaAcum = 0, hayAcum = false;
+    let sumaCobrar = 0, sumaInsumos = 0, sumaAlquiler = 0, sumaComb = 0, sumaTn = 0, sumaMO = 0, sumaMOH = 0, sumaAsf = 0, sumaAcum = 0, hayAcum = false;
     const chartData = { insumos: [], mo: [], alquiler: [], tn: [], tnProv: [] };
     // Gráfico gemelo para provisiones (no son obras): una barra por grupo
     rows.filter(r => r.otroGasto && r.tnObraTotal > 0).forEach(r => {
@@ -4231,6 +4289,7 @@ function renderResumenObra() {
       sumaCobrar   += r.aCobrar;
       sumaInsumos  += r.insumos;
       sumaAlquiler += r.alquiler;
+      sumaComb     += r.combustible || 0;
       sumaTn       += r.tnObra + r.tnFrioObra;
       sumaMO       += r.moObra || 0;
       sumaMOH      += r.moHormigon || 0;
@@ -4252,7 +4311,7 @@ function renderResumenObra() {
 
     const extras = rows.filter(r => r.extra && !r.otroGasto);
     if (extras.length > 0) {
-      filas.push(`<tr><td colspan="8" style="background:#f8fafc;padding:5px 12px;font-size:11px;color:var(--muted);border-top:2px solid var(--border);font-style:italic;">
+      filas.push(`<tr><td colspan="9" style="background:#f8fafc;padding:5px 12px;font-size:11px;color:var(--muted);border-top:2px solid var(--border);font-style:italic;">
         Con gasto/salida del mes · ${extras.length} obra${extras.length !== 1 ? 's' : ''} con OC de insumos o remitos, sin certificado en obras activas
       </td></tr>`);
       extras.slice().sort(_ordenContrib).forEach(r => filas.push(_filaMargenHTML(r, moEsEstim, tnTotalGlobal)));
@@ -4274,7 +4333,7 @@ function renderResumenObra() {
     const tnTotalCell = (sumaTn > 0 || sumaAsf > 0)
       ? `<span style="font-size:12px;color:var(--muted);">${sumaTn > 0 ? fmtTn(sumaTn) + ' tn' : ''}${sumaAsf > 0 ? '<br><small class="neg-val" style="font-size:10px;">' + fmt(sumaAsf) + '</small>' : ''}</span>`
       : '<span class="nd">—</span>';
-    const sumaEgresos = sumaInsumos + sumaMO + sumaAsf + sumaAlquiler;
+    const sumaEgresos = sumaInsumos + sumaMO + sumaAsf + sumaAlquiler + sumaComb;
     const sumaMargen  = sumaCobrar - sumaEgresos;
     const sumaColor   = sumaMargen > 0 ? 'pos-val' : sumaMargen < 0 ? 'neg-val' : '';
 
@@ -4285,6 +4344,7 @@ function renderResumenObra() {
       <td class="num">${moCellTotal}</td>
       <td class="num">${tnTotalCell}</td>
       <td class="num neg-val">${fmt(sumaAlquiler)}</td>
+      <td class="num neg-val">${sumaComb > 0 ? fmt(sumaComb) : '<span class="nd">—</span>'}</td>
       <td class="num ${sumaColor}">${fmt(sumaMargen)}</td>
       ${mesActual === 'total' ? '' : `<td class="num ${sumaAcum > 0 ? 'pos-val' : sumaAcum < 0 ? 'neg-val' : ''}" style="background:${sumaAcum > 0 ? '#f0fdf4' : sumaAcum < 0 ? '#fef2f2' : 'transparent'};" title="Suma del margen total (meses cerrados) de las obras mostradas">${hayAcum ? fmt(sumaAcum) : '<span class="nd">—</span>'}</td>`}
     </tr>`);
@@ -4342,8 +4402,9 @@ function renderResumenTipoContrato() {
   const lista = Object.keys(grupos)
     .map(tipo => {
       const rs  = grupos[tipo];
-      const tot = { aCobrar: 0, insumos: 0, mo: 0, moh: 0, tn: 0, asf: 0, alquiler: 0, margen: 0, acum: 0, hayAcum: false };
+      const tot = { aCobrar: 0, insumos: 0, mo: 0, moh: 0, tn: 0, asf: 0, alquiler: 0, comb: 0, margen: 0, acum: 0, hayAcum: false };
       rs.forEach(r => {
+        tot.comb     += r.combustible || 0;
         tot.aCobrar  += r.aCobrar;
         tot.insumos  += r.insumos;
         tot.mo       += r.moObra || 0;
@@ -4371,6 +4432,7 @@ function renderResumenTipoContrato() {
     <th class="num">MO (propia)</th>
     <th class="num">Asfalto (tn)</th>
     <th class="num">Alquiler</th>
+    <th class="num" title="Combustible cargado a la obra (planillas de entregas de combustible: tanque propio y estaciones). El alquiler de equipos no incluye combustible.">Combustible</th>
     <th class="num" title="Contribución marginal del período: Generado − costos directos">${esTotal ? 'Contribución marginal' : 'Contrib. marginal mensual'}</th>
     ${esTotal ? '' : '<th class="num" title="Contribución marginal total de la obra — solo meses cerrados, mismo criterio que el historial">Contrib. marginal total</th>'}
   </tr></thead>`;
@@ -4406,6 +4468,7 @@ function renderResumenTipoContrato() {
       <td class="num">${g.tot.mo > 0 ? `<span class="neg-val">${moEsEstim ? '~' : ''}${fmt(g.tot.mo)}</span>` : '<span class="nd">—</span>'}</td>
       <td class="num">${g.tot.tn > 0 ? `<span style="font-size:12px;color:var(--muted);">${fmtTn(g.tot.tn)} tn</span>` : '<span class="nd">—</span>'}</td>
       <td class="num neg-val">${fmt(g.tot.alquiler)}</td>
+      <td class="num neg-val">${g.tot.comb > 0 ? fmt(g.tot.comb) : '<span class="nd">—</span>'}</td>
       <td class="num ${mgColor}" style="background:${g.tot.margen > 0 ? '#f0fdf4' : g.tot.margen < 0 ? '#fef2f2' : 'transparent'};">${fmt(g.tot.margen)}</td>
       ${esTotal ? '' : `<td class="num ${g.tot.hayAcum ? (g.tot.acum > 0 ? 'pos-val' : g.tot.acum < 0 ? 'neg-val' : '') : ''}" style="background:${g.tot.hayAcum ? (g.tot.acum > 0 ? '#f0fdf4' : g.tot.acum < 0 ? '#fef2f2' : 'transparent') : 'transparent'};">${g.tot.hayAcum ? fmt(g.tot.acum) : '<span class="nd">—</span>'}</td>`}
     </tr>`);
@@ -4422,8 +4485,9 @@ function renderResumenTipoContrato() {
 
   // Total general (suma de los márgenes por obra de todos los tipos + Otros
   // Gastos o salidas) — así coincide con el TOTAL de "Contribución marginal por obra"
-  const totG = { aCobrar: 0, insumos: 0, mo: 0, moh: 0, asf: 0, alquiler: 0, margen: 0, acum: 0, hayAcum: false };
+  const totG = { aCobrar: 0, insumos: 0, mo: 0, moh: 0, asf: 0, alquiler: 0, comb: 0, margen: 0, acum: 0, hayAcum: false };
   lista.forEach(g => {
+    totG.comb += g.tot.comb;
     totG.aCobrar += g.tot.aCobrar; totG.insumos += g.tot.insumos; totG.mo += g.tot.mo; totG.moh += g.tot.moh;
     totG.asf += g.tot.asf; totG.alquiler += g.tot.alquiler; totG.margen += g.tot.margen;
     if (g.tot.hayAcum) { totG.acum += g.tot.acum; totG.hayAcum = true; }
@@ -4436,6 +4500,7 @@ function renderResumenTipoContrato() {
     <span data-restrict="sueldos">MO propia: <strong class="neg-val">${moEsEstim ? '~' : ''}${fmt(totG.mo)}</strong></span>
     <span>Asfalto: <strong class="neg-val">${fmt(totG.asf)}</strong></span>
     <span>Alquiler: <strong class="neg-val">${fmt(totG.alquiler)}</strong></span>
+    <span>Combustible: <strong class="neg-val">${fmt(totG.comb)}</strong></span>
     <span>${esTotal ? 'Contribución marginal' : 'Contrib. marginal mensual'}: <strong class="${mgG}">${fmt(totG.margen)}</strong></span>
     ${(!esTotal && totG.hayAcum) ? `<span>Contrib. marginal total: <strong class="${totG.acum > 0 ? 'pos-val' : totG.acum < 0 ? 'neg-val' : ''}">${fmt(totG.acum)}</strong></span>` : ''}
   </div>`;
@@ -4461,7 +4526,7 @@ function openHistorialObra(codObra, nombreObra) {
     return (keyC && (ck === keyC || nk === keyC)) || (keyN && (ck === keyN || nk === keyN));
   });
 
-  const tot = { aCobrar: 0, insumos: 0, mo: 0, moh: 0, asf: 0, alquiler: 0, margen: 0, tnCal: 0, tnFrio: 0 };
+  const tot = { aCobrar: 0, insumos: 0, mo: 0, moh: 0, asf: 0, alquiler: 0, comb: 0, margen: 0, tnCal: 0, tnFrio: 0 };
   let algunaEstim = false;
   let hayDatosMesActual = false;
   let futuroGenerado = 0, enCursoGenerado = 0;
@@ -4492,6 +4557,7 @@ function openHistorialObra(codObra, nombreObra) {
         <td style="padding:7px 10px;font-size:12px;text-align:right;" data-restrict="sueldos">${esEnCurso && (r.moObra || 0) > 0 ? fmt(r.moObra) : '—'}</td>
         <td style="padding:7px 10px;font-size:12px;text-align:right;">${esEnCurso && r.costoAsfObra != null ? fmt(r.costoAsfObra) : '—'}</td>
         <td style="padding:7px 10px;font-size:12px;text-align:right;">${esEnCurso && r.alquiler > 0 ? fmt(r.alquiler) : '—'}</td>
+        <td style="padding:7px 10px;font-size:12px;text-align:right;">${esEnCurso && r.combustible > 0 ? fmt(r.combustible) : '—'}</td>
         <td style="padding:7px 10px;font-size:11px;text-align:right;">${esEnCurso ? 'en curso — no suma' : 'programado — no suma'}</td>
         <td style="padding:7px 10px;font-size:12px;text-align:right;">—</td>
       </tr>`);
@@ -4505,6 +4571,7 @@ function openHistorialObra(codObra, nombreObra) {
     tot.moh      += r.moHormigon   || 0;
     tot.asf      += r.costoAsfObra || 0;
     tot.alquiler += r.alquiler;
+    tot.comb     += r.combustible || 0;
     tot.margen   += r.margen;
     tot.tnCal    += r.tnObra;
     tot.tnFrio   += r.tnFrioObra;
@@ -4519,6 +4586,7 @@ function openHistorialObra(codObra, nombreObra) {
       ${tdClick(m, 'mo', (r.moObra || 0) > 0 ? `<span class="neg-val" style="text-decoration:underline dotted;" title="MO propia (TANGO)">${d.moEsEstim ? '~' : ''}${fmt(r.moObra || 0)}</span>` : '—').replace('<td style', '<td data-restrict="sueldos" style')}
       ${tdClick(m, 'tn', r.costoAsfObra != null ? `<span class="neg-val" style="text-decoration:underline dotted;" title="${tnStr}">${fmt(r.costoAsfObra)}</span>` : (tnStr || '—'))}
       ${tdClick(m, 'alquiler', r.alquiler > 0 ? `<span class="neg-val" style="text-decoration:underline dotted;">${fmt(r.alquiler)}</span>` : '—')}
+      ${tdClick(m, 'combustible', r.combustible > 0 ? `<span class="neg-val" style="text-decoration:underline dotted;">${fmt(r.combustible)}</span>` : '—')}
       <td style="padding:7px 10px;font-size:12px;text-align:right;background:${r.margen > 0 ? '#f0fdf4' : r.margen < 0 ? '#fef2f2' : 'transparent'};"><strong class="${mgColor}">${fmt(r.margen)}</strong></td>
       <td style="padding:7px 10px;font-size:12px;text-align:right;" title="Contribución marginal acumulada hasta ${(MES[m] || m).replace(' 2026', '')} (meses cerrados)"><span class="${tot.margenRun > 0 ? 'pos-val' : tot.margenRun < 0 ? 'neg-val' : ''}" style="opacity:.85;">${fmt(tot.margenRun)}</span></td>
     </tr>`);
@@ -4576,6 +4644,7 @@ function openHistorialObra(codObra, nombreObra) {
           <th style="text-align:right;padding:7px 10px;font-size:11px;" data-restrict="sueldos" title="Mano de obra propia (TANGO). La tercerizada va dentro de Insumos.">MO (propia)</th>
           <th style="text-align:right;padding:7px 10px;font-size:11px;">Asfalto</th>
           <th style="text-align:right;padding:7px 10px;font-size:11px;">Alquiler</th>
+          <th style="text-align:right;padding:7px 10px;font-size:11px;">Combustible</th>
           <th style="text-align:right;padding:7px 10px;font-size:11px;" title="Contribución marginal del mes">Contrib. marginal</th>
           <th style="text-align:right;padding:7px 10px;font-size:11px;" title="Contribución marginal acumulada hasta ese mes (solo meses cerrados)">Acumulada</th>
         </tr></thead>
@@ -4587,6 +4656,7 @@ function openHistorialObra(codObra, nombreObra) {
             <td style="padding:8px 10px;font-size:12px;text-align:right;" class="neg-val" data-restrict="sueldos" title="MO propia (TANGO)">${tot.mo > 0 ? (algunaEstim ? '~' : '') + fmt(tot.mo) : '—'}</td>
             <td style="padding:8px 10px;font-size:12px;text-align:right;" class="neg-val">${tot.asf > 0 ? fmt(tot.asf) : '—'}</td>
             <td style="padding:8px 10px;font-size:12px;text-align:right;" class="neg-val">${tot.alquiler > 0 ? fmt(tot.alquiler) : '—'}</td>
+            <td style="padding:8px 10px;font-size:12px;text-align:right;" class="neg-val">${tot.comb > 0 ? fmt(tot.comb) : '—'}</td>
             <td style="padding:8px 10px;font-size:12px;text-align:right;background:${tot.margen > 0 ? '#f0fdf4' : tot.margen < 0 ? '#fef2f2' : 'transparent'};" class="${mgColorT}">${fmt(tot.margen)}</td>
             <td style="padding:8px 10px;font-size:12px;text-align:right;" class="${mgColorT}">${fmt(tot.margen)}</td>
           </tr>
@@ -4594,7 +4664,7 @@ function openHistorialObra(codObra, nombreObra) {
       </table>
       ${tnTotStr}
       ${frBloque}
-      <div style="font-size:11px;color:var(--muted);margin-top:10px;">Contribución marginal = Generado − Insumos (incluye MO tercerizada) − MO propia − Costo asfalto − Alquiler, antes de gastos de estructura. El mes ⏳ está en curso (se está generando) y los 📅 son el plan de certificación: se muestran pero no suman. ${algunaEstim ? '~ incluye MO estimada en meses sin TANGO cargado.' : ''}</div>`;
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;">Contribución marginal = Generado − Insumos (incluye MO tercerizada) − MO propia − Costo asfalto − Alquiler − Combustible, antes de gastos de estructura. El mes ⏳ está en curso (se está generando) y los 📅 son el plan de certificación: se muestran pero no suman. ${algunaEstim ? '~ incluye MO estimada en meses sin TANGO cargado.' : ''}</div>`;
   }
 
   const codEsc3 = (codObra    || '').replace(/'/g, "\\'");
@@ -4654,7 +4724,7 @@ function _recolectarDatosObra(codObra, nombreObra, soloMes, hastaMes) {
   const equipoTotales = {};          // codigo → { codigo, clasificacion, marca, modelo, horas, costo }
   const provPorMes   = {};           // m → { proveedor → { monto, nOC } }   (apertura mensual del reporte)
   const equipoPorMes = {};           // m → { codigo → { codigo, clasificacion, horas, costo } }
-  const tot = { aCobrar: 0, insumos: 0, mo: 0, moh: 0, asf: 0, alquiler: 0, margen: 0, tnCal: 0, tnFrio: 0 };
+  const tot = { aCobrar: 0, insumos: 0, mo: 0, moh: 0, asf: 0, alquiler: 0, comb: 0, margen: 0, tnCal: 0, tnFrio: 0 };
   let algunaEstim = false;
   let infoObra = null;               // { nombre, cod_obra, cliente, tipo }
 
@@ -4676,12 +4746,12 @@ function _recolectarDatosObra(codObra, nombreObra, soloMes, hastaMes) {
     porMes[m] = {
       aCobrar: r.aCobrar, insumos: r.insumos, mo: r.moObra || 0, moEstim: d.moEsEstim && r.moObra != null,
       moh: r.moHormigon || 0,
-      asf: r.costoAsfObra || 0, alquiler: r.alquiler, margen: r.margen,
+      asf: r.costoAsfObra || 0, alquiler: r.alquiler, comb: r.combustible || 0, margen: r.margen,
       tnCal: r.tnObra, tnFrio: r.tnFrioObra, nCert: 0,
     };
     if (d.moEsEstim && r.moObra != null) algunaEstim = true;
     tot.aCobrar += r.aCobrar; tot.insumos += r.insumos; tot.mo += r.moObra || 0; tot.moh += r.moHormigon || 0;
-    tot.asf += r.costoAsfObra || 0; tot.alquiler += r.alquiler; tot.margen += r.margen;
+    tot.asf += r.costoAsfObra || 0; tot.alquiler += r.alquiler; tot.comb += r.combustible || 0; tot.margen += r.margen;
     tot.tnCal += r.tnObra; tot.tnFrio += r.tnFrioObra;
 
     // Certificados del mes (renglones del archivo de Agustín)
@@ -6453,12 +6523,12 @@ function _resultadoUnidadesMes(mes) {
   // Margen Obras = TOTAL de Contribución marginal por obra de ese mes
   let margenObras = null;
   const dObras = computeMargenObrasMes(mes);
-  let obACobrar = 0, obInsumos = 0, obMO = 0, obMOH = 0, obAsf = 0, obAlq = 0;
+  let obACobrar = 0, obInsumos = 0, obMO = 0, obMOH = 0, obAsf = 0, obAlq = 0, obComb = 0;
   if (dObras && dObras.rows) {
     margenObras = dObras.rows.reduce((s, r) => s + r.margen, 0);
     dObras.rows.forEach(r => {
       obACobrar += r.aCobrar || 0; obInsumos += r.insumos || 0;
-      obMO += r.moObra || 0; obMOH += r.moHormigon || 0; obAsf += r.costoAsfObra || 0; obAlq += r.alquiler || 0;
+      obMO += r.moObra || 0; obMOH += r.moHormigon || 0; obAsf += r.costoAsfObra || 0; obAlq += r.alquiler || 0; obComb += r.combustible || 0;
     });
   }
 
@@ -6514,6 +6584,7 @@ function _resultadoUnidadesMes(mes) {
         { l: 'MO Hormigón (tercerizada)', v: obMOH, nota: 'OC Guillermo — "Mano de obra"' },
         { l: 'Costo asfalto', v: obAsf, nota: 'tn × precio' },
         { l: 'Alquiler interno máquinas', v: obAlq, nota: 'Partes diarios' },
+        { l: 'Combustible', v: obComb, nota: 'Entregas de combustible' },
       ] },
     taller: { titulo: 'Resultado Taller', color: '#92400e', tab: 'taller', resultado: resultTaller,
       ingresos: [{ l: 'Alquiler de equipos (a obras + terceros)', v: alqMes || 0, nota: 'Partes diarios × tarifa' }],
@@ -7073,6 +7144,10 @@ const SHEET_URLS_AUDIT = {
   partes: 'https://docs.google.com/spreadsheets/d/1e_emRVEUxTaNtLxeC0wXIWKzcKuoulZkFSS9O1e0XHo/edit',
   tarifas: 'https://docs.google.com/spreadsheets/d/1PEcPzwrQ8kE2evmUlrFq9wPbgWOR92MPl3LEqcSYbIk/edit',
   tango: 'https://drive.google.com/drive/folders/1hQZoJovbFDHNsJhNiGMEueH1bLfXuuCP',
+  combLeandro:  'https://docs.google.com/spreadsheets/d/19eyY8MImPM_-Gyzj8QcqA_yR5KDrkuu-1faJUU48N1A/edit',
+  combTiburcio: 'https://docs.google.com/spreadsheets/d/1DD8BVoF6jX-CcakbbVO6fNJKYF82qBIK1YwyVLQcDJ8/edit',
+  combHerrero:  'https://docs.google.com/spreadsheets/d/1GB_oiL40fEXHXzhmor3ztnnriiikX1xp3fG-F5Uuw5E/edit',
+  combCarpeta:  'https://drive.google.com/drive/folders/1hmjf3K7j9GZARAuP8TQP1v6Kdddyrj9Y',
 };
 const NOMBRE_ARCHIVO_AUDIT = { julia: 'archivo de Agustín', esteban: 'planilla de Esteban', tango: 'quincenas de TANGO (Mauro)', remitos: 'remitos de Roberto', ocInsumos: 'OC de Guillermo' };
 function _sheetUrlAudit(it) {
@@ -8742,6 +8817,7 @@ function openSalidasAsfalto(codObra, nombreObra, mesP, sFiltro, dFiltro) {
 
 // ── Panel de detalle por celda de la tabla Margen por Obra ───────────────
 function openDetalleCelda(tipo, codObra, nombreObra, mesOver) {
+  if (tipo === 'combustible') return openCombustibleObra(codObra, nombreObra, mesOver);
   // mesOver: permite abrir el desglose de OTRO mes (ej. click en una fila
   // del historial) sin cambiar el mes seleccionado del tablero. En ese caso
   // la ✕ vuelve al historial en vez de cerrar el lateral.
@@ -11244,6 +11320,7 @@ function _renderEgresosChartEn(containerId, labelId) {
   const moMes  = filasEgr.length ? sumEgr(r => r.moObra) : null;    // MO propia (TANGO)
   const asfMes = filasEgr.length ? sumEgr(r => r.costoAsfObra) : null;
   const alqMes = filasEgr.length ? sumEgr(r => r.alquiler) : null;
+  const combMes = filasEgr.length ? sumEgr(r => r.combustible) : null;
   const mohMes = filasEgr.length ? sumEgr(r => r.moHormigon) : 0;
   const moEsEstimEgr = !!(dEgr && dEgr.moEsEstim);
 
@@ -11252,7 +11329,7 @@ function _renderEgresosChartEn(containerId, labelId) {
     return;
   }
 
-  const total = (ocMes || 0) + (moMes || 0) + (asfMes || 0) + (alqMes || 0);
+  const total = (ocMes || 0) + (moMes || 0) + (asfMes || 0) + (alqMes || 0) + (combMes || 0);
   // Detalle para el tooltip: composición + las 3 obras que más pesan
   const topObras = f => filasEgr.map(r => ({ n: r.o.cod_obra || r.o.nombre, v: f(r) || 0 })).filter(x => x.v > 0)
     .sort((a, b) => b.v - a.v).slice(0, 3).map(x => `${x.n}: ${fmt(x.v)}`).join(' · ');
@@ -11289,6 +11366,12 @@ function _renderEgresosChartEn(containerId, labelId) {
       como: 'Horas que los equipos propios de INGECO trabajaron en cada obra (partes diarios de Nico) multiplicadas por la tarifa de alquiler de cada equipo (planilla de Adrián, en USD al dólar oficial del mes). Es el costo de oportunidad de usar máquina propia: lo que se le cobraría a un tercero.',
       formula: `Σ horas por equipo × tarifa USD/h × TC oficial = ${fmt(alqMes || 0)}`,
       fuente: { txt: 'Partes diarios (Nico) · Tarifas (Adrián)', url: SHEET_URLS_AUDIT.partes }, lista: porObraLista(r => r.alquiler), tipoCelda: 'alquiler' },
+    { label: 'Combustible', valor: combMes || 0, color: '#0d9488',
+      det: 'Cargas de combustible imputadas a cada obra (tanque propio y estaciones)', top: topObras(r => r.combustible),
+      breve: 'Combustible cargado a equipos y vehículos en cada obra (planillas de entregas). El alquiler de equipos no lo incluye.',
+      como: 'Suma de las cargas de combustible del mes cuya columna OBRA GENERAL es la obra, por su precio total: el tanque propio (Leandro Casares, equipos y camiones) y las estaciones de servicio (Tiburcio Sanz y Carlos Herrero: camionetas, vehículos particulares y bidones). El alquiler interno de equipos se cobra sin combustible, por eso va aparte.',
+      formula: `Σ cargas con OBRA GENERAL = obra × precio total = ${fmt(combMes || 0)}`,
+      fuente: { txt: 'Entregas de combustible (Leandro Casares · Tiburcio Sanz · Carlos Herrero)', url: SHEET_URLS_AUDIT.combLeandro }, lista: porObraLista(r => r.combustible), tipoCelda: 'combustible' },
   ].filter(i => i.valor > 0);
   _EGR_ITEMS = { items, total, generado: generadoEgr, mes: mesActual };
 
@@ -11978,6 +12061,9 @@ async function refreshData() {
       if (data.gastosEstructura && typeof data.gastosEstructura === 'object') {
         Object.assign(GASTOS_ESTRUCTURA, data.gastosEstructura);
       }
+      if (data.combustible && typeof data.combustible === 'object') {
+        Object.assign(COMBUSTIBLE, data.combustible);
+      }
       if (data.repuestosEquipos && typeof data.repuestosEquipos === 'object') {
         Object.assign(REPUESTOS_EQUIPOS, data.repuestosEquipos);
       }
@@ -12255,6 +12341,9 @@ if (APPS_SCRIPT_URL) {
         if (data.gastosEstructura && typeof data.gastosEstructura === 'object') {
           Object.assign(GASTOS_ESTRUCTURA, data.gastosEstructura);
         }
+        if (data.combustible && typeof data.combustible === 'object') {
+          Object.assign(COMBUSTIBLE, data.combustible);
+        }
         if (data.repuestosEquipos && typeof data.repuestosEquipos === 'object') {
           Object.assign(REPUESTOS_EQUIPOS, data.repuestosEquipos);
         }
@@ -12382,7 +12471,7 @@ function _botPaquete() {
         return {
           obra: r.o.cod_obra || r.o.nombre, cliente: r.o.cliente || undefined, tipoContrato: r.o.tipo || undefined,
           certificado: _r0(r.aCobrar), estadoCert: estado,
-          insumos: _r0(r.insumos), moHormigon: _r0(r.moHormigon) || undefined, moPropia: _r0(r.moObra), alquiler: _r0(r.alquiler),
+          insumos: _r0(r.insumos), moHormigon: _r0(r.moHormigon) || undefined, moPropia: _r0(r.moObra), alquiler: _r0(r.alquiler), combustible: _r0(r.combustible) || undefined,
           asfaltoCalienteTn: Math.round((r.tnObra || 0) * 10) / 10 || undefined, asfaltoFrioTn: Math.round((r.tnFrioObra || 0) * 10) / 10 || undefined,
           costoAsfalto: _r0(r.costoAsfObra) || undefined, margen: _r0(r.margen),
         };

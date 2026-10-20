@@ -36,6 +36,10 @@ const FILE_IDS = {
   precioAsfalto:  '1lqKTXtDLT2FxyXurxjU1uE4epDOKs5SP8AXu5wAUsJ4',  // Precio de mercado asfalto $/tn por mes
   gastosEstructura: '1beFIrKD6ljPKjjssuWP-_TmTH8vr1TktBnVDuX9nxyM', // Libro mayor de gastos admin. (Gastos de Estructura)
   ajustesTablero:   '1n11HzMIKGTJnhQm6cACMq4MCsOiafk6pl_d18yM9Ye4', // Precios/ajustes cargados desde el tablero (✎) — historial
+  // Entregas de combustible (carpeta ENTREGAS DE COMBUSTIBLE, Drive de Nico) — oct-2026
+  combLeandro:  '19eyY8MImPM_-Gyzj8QcqA_yR5KDrkuu-1faJUU48N1A',  // Tanque propio (Leandro Casares): equipos y camiones
+  combTiburcio: '1DD8BVoF6jX-CcakbbVO6fNJKYF82qBIK1YwyVLQcDJ8',  // Estación Tiburcio Sanz: camionetas y vehículos particulares
+  combHerrero:  '1GB_oiL40fEXHXzhmor3ztnnriiikX1xp3fG-F5Uuw5E',  // Estación Carlos Herrero (Quilmes): camionetas y bidones
 };
 
 // Tipo de cambio USD → ARS oficial promedio mensual (Banco Nación Argentina)
@@ -128,7 +132,7 @@ function doGet(e) {
     if (action === 'diag' || action === 'limpiar') {
       const props = PROPS.getProperties();
       const validas = {};
-      ['', '_obras', '_alquiler', '_mo', '_moq', '_oc', '_remitos', '_cobros_est', '_stock', '_precio', '_gest', '_repuestos', '_fechas']
+      ['', '_obras', '_alquiler', '_mo', '_moq', '_oc', '_remitos', '_cobros_est', '_stock', '_precio', '_gest', '_repuestos', '_fechas', '_comb']
         .forEach(sfx => { validas[CACHE_KEY + sfx] = true; });
       validas['API_KEY'] = true;
       const claves = Object.keys(props).map(k => ({ k: k, len: (props[k] || '').length, gz: (props[k] || '').indexOf('gz:') === 0, valida: !!validas[k] }));
@@ -226,6 +230,10 @@ function doGet(e) {
         const cachedPrecio = _cacheGet(CACHE_KEY + '_precio');
         if (cachedPrecio) data.precioAsfalto = cachedPrecio;
       }
+      if (data && !data.combustible) {
+        const cachedComb = _cacheGet(CACHE_KEY + '_comb');
+        if (cachedComb) data.combustible = cachedComb;
+      }
       if (data && !data.gastosEstructura) {
         const cachedGest = _cacheGet(CACHE_KEY + '_gest');
         if (cachedGest) data.gastosEstructura = cachedGest;
@@ -274,6 +282,9 @@ function doGet(e) {
       try {
         if (data.gastosEstructura) _cacheSet(CACHE_KEY + '_gest', data.gastosEstructura);
       } catch(ce) { Logger.log('Cache write (gest) error: ' + ce); }
+      try {
+        if (data.combustible) _cacheSet(CACHE_KEY + '_comb', data.combustible);
+      } catch(ce) { Logger.log('Cache write (comb) error: ' + ce); }
       try {
         if (data.repuestosEquipos) _cacheSet(CACHE_KEY + '_repuestos', data.repuestosEquipos);
       } catch(ce) { Logger.log('Cache write (repuestos) error: ' + ce); }
@@ -350,6 +361,7 @@ function actualizarNocturno() {
     if (data.stockAsfalto)    _cacheSet(CACHE_KEY + '_stock', data.stockAsfalto);
     if (data.precioAsfalto)   _cacheSet(CACHE_KEY + '_precio', data.precioAsfalto);
     if (data.gastosEstructura) _cacheSet(CACHE_KEY + '_gest', data.gastosEstructura);
+    if (data.combustible)     _cacheSet(CACHE_KEY + '_comb', data.combustible);
     if (data.repuestosEquipos) _cacheSet(CACHE_KEY + '_repuestos', data.repuestosEquipos);
     if (data.fechasFuentes)   _cacheSet(CACHE_KEY + '_fechas', data.fechasFuentes);
     // Espejo de cobros reales en el archivo de Agustín (pestaña autogenerada)
@@ -773,6 +785,8 @@ function buildData() {
   catch(e) { Logger.log('precioAsfalto error: ' + e); result.precioAsfalto = null; }
   try { result.gastosEstructura = leerGastosEstructura(); }
   catch(e) { Logger.log('gastosEstructura error: ' + e); result.gastosEstructura = null; }
+  try { result.combustible = leerCombustible(); }
+  catch(e) { Logger.log('combustible error: ' + e); result.combustible = null; }
   // Sueldos del personal mensual (hoja "Mensuales" de TANGO, oct-2026): van
   // a Gastos de Estructura como una cuenta más, con el detalle por persona.
   try {
@@ -806,7 +820,7 @@ function leerFechasFuentes() {
   const resultado = {};
   const claves = ['ocInsumos', 'maestroObras', 'fernandoObras', 'agustinObras', 'estebanSheet',
     'equiposFlota', 'usageEquipos', 'repuestosEquipos', 'remitosAsfalto',
-    'ajusteStock', 'precioAsfalto', 'gastosEstructura'];
+    'ajusteStock', 'precioAsfalto', 'gastosEstructura', 'combLeandro', 'combTiburcio', 'combHerrero'];
   claves.forEach(function(k) {
     try {
       resultado[k] = DriveApp.getFileById(FILE_IDS[k]).getLastUpdated().toISOString();
@@ -1405,6 +1419,74 @@ function leerOCDetalle() {
     out.push([String(r[cN] || '').trim(), fecha, mes, String(r[cP] || '').trim(), String(r[cO] || '').trim(),
       String(r[cC] || '').trim(), String(r[cD] || '').trim().slice(0, 90), Math.round(monto), String(r[cE] || '').trim(), i + 1]);
   }
+  return out;
+}
+
+// ============================================================
+// COMBUSTIBLE (oct-2026) — planillas "ENTREGAS DE COMBUSTIBLE" de Nico.
+// El alquiler interno de equipos NO incluye combustible (Marcos): el
+// combustible es un costo directo de la obra donde se cargó (col OBRA GENERAL,
+// nombres del Maestro). Tres planillas con las mismas columnas clave:
+//   Leandro Casares (tanque propio → equipos/camiones), Tiburcio Sanz y
+//   Carlos Herrero (estaciones → camionetas, vehículos particulares, bidones).
+// Devuelve { mes: { total, litros, n, porObra: [{obra, monto, litros, n,
+//   equipos, vehiculos, top: [{equipo, monto, litros}]}] } }
+// ============================================================
+function leerCombustible() {
+  const fuentes = [
+    { id: FILE_IDS.combLeandro,  origen: 'equipos' },
+    { id: FILE_IDS.combTiburcio, origen: 'vehiculos' },
+    { id: FILE_IDS.combHerrero,  origen: 'vehiculos' },
+  ];
+  const acum = {};
+  fuentes.forEach(function(f) {
+    try {
+      const ss = SpreadsheetApp.openById(f.id);
+      const sheet = ss.getSheetByName('ENTREGAS') || ss.getSheets()[0];
+      const rows = sheet.getDataRange().getValues();
+      let hdr = -1;
+      for (let i = 0; i < Math.min(6, rows.length); i++) {
+        const t = rows[i].map(function(c) { return String(c).toUpperCase(); }).join('|');
+        if (t.indexOf('FECHA') >= 0 && t.indexOf('CANTIDAD') >= 0) { hdr = i; break; }
+      }
+      if (hdr < 0) { Logger.log('combustible ' + f.id + ': sin encabezado'); return; }
+      const H = rows[hdr].map(function(c) { return String(c).toLowerCase().trim(); });
+      const cF = _findCol(H, ['fecha']), cL = _findCol(H, ['cantidad']), cT = _findCol(H, ['precio total', 'total']);
+      const cO = _findCol(H, ['obra general']), cE = _findCol(H, ['equipo/sector', 'equipo']), cC = _findCol(H, ['código', 'codigo']);
+      if (cF == null || cT == null || cO == null) { Logger.log('combustible ' + f.id + ': faltan columnas'); return; }
+      for (let i = hdr + 1; i < rows.length; i++) {
+        const r = rows[i];
+        const mes = parsearMes(r[cF]); if (!mes) continue;
+        const monto = parsearMonto(r[cT]); if (!(monto > 0)) continue;
+        const litros = cL != null ? parsearMonto(r[cL]) : 0;
+        const obra = String(r[cO] || '').trim() || 'Obra no disponible';
+        const cod = cC != null ? String(r[cC] || '').trim() : '';
+        let eq = cE != null ? String(r[cE] || '').trim() : '';
+        if (cod && eq.indexOf(cod) !== 0) eq = cod + (eq ? ' — ' + eq : '');
+        eq = eq || 'Sin especificar';
+        if (!acum[mes]) acum[mes] = { total: 0, litros: 0, n: 0, obras: {} };
+        const m = acum[mes];
+        m.total += monto; m.litros += litros; m.n++;
+        const o = m.obras[obra] || (m.obras[obra] = { monto: 0, litros: 0, n: 0, equipos: 0, vehiculos: 0, eq: {} });
+        o.monto += monto; o.litros += litros; o.n++; o[f.origen] += monto;
+        const e = o.eq[eq] || (o.eq[eq] = { monto: 0, litros: 0 });
+        e.monto += monto; e.litros += litros;
+      }
+    } catch (err) { Logger.log('combustible ' + f.id + ' error: ' + err); }
+  });
+  const out = {};
+  Object.keys(acum).forEach(function(mes) {
+    const m = acum[mes];
+    out[mes] = { total: Math.round(m.total), litros: Math.round(m.litros), n: m.n,
+      porObra: Object.keys(m.obras).map(function(nom) {
+        const o = m.obras[nom];
+        return { obra: nom, monto: Math.round(o.monto), litros: Math.round(o.litros), n: o.n,
+          equipos: Math.round(o.equipos), vehiculos: Math.round(o.vehiculos),
+          top: Object.keys(o.eq).map(function(k) { return { equipo: k.slice(0, 60), monto: Math.round(o.eq[k].monto), litros: Math.round(o.eq[k].litros) }; })
+            .sort(function(a, b) { return b.monto - a.monto; }).slice(0, 8) };
+      }).sort(function(a, b) { return b.monto - a.monto; }) };
+  });
+  Logger.log('combustible — meses: ' + Object.keys(out).join(', '));
   return out;
 }
 
