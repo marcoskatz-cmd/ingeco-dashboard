@@ -962,6 +962,10 @@ function parsearGSheetTangoMO(file) {
   const ss     = SpreadsheetApp.openById(file.getId());
   const sheets = ss.getSheets();
   const totales = {}; // key = "centro||clasificacion" — acumulado de TODAS las quincenas
+  // Dónde está cada centro en el archivo (una referencia por pestaña: gid +
+  // primera fila + cantidad) para que Auditorías linkee la fila a corregir (oct-2026)
+  const refs = {};
+  const fileId = file.getId();
   const quincenas = []; // [{nombre, total, totalObra, totalTaller, totalPlanta}] — una por pestaña
   let mensuales = null; // hoja "Mensuales": sueldos del personal mensual → Gastos de Estructura
 
@@ -1059,6 +1063,10 @@ function parsearGSheetTangoMO(file) {
       }
       const totKey = key + '||' + clasif;
       totales[totKey] = (totales[totKey] || 0) + monto;
+      const gidQ = sheet.getSheetId();
+      const rf = refs[totKey] || (refs[totKey] = []);
+      const last = rf[rf.length - 1];
+      if (last && last.gid === gidQ) last.n++; else rf.push({ gid: gidQ, fila: i + 1, n: 1 });
 
       qTotal += monto;
       if (clasif === 'Taller' || clasif === 'Maquinista') qTaller += monto;
@@ -1085,6 +1093,8 @@ function parsearGSheetTangoMO(file) {
         centro:         sep >= 0 ? totKey.substring(0, sep) : totKey,
         monto:          Math.round(monto),
         clasificacion:  sep >= 0 ? totKey.substring(sep + 2) : 'Obra',
+        fileId:         fileId,
+        refs:           refs[totKey] || [],
       };
     })
     .filter(r => r.monto > 100)

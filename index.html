@@ -7390,7 +7390,8 @@ const SHEET_URLS_AUDIT = {
 };
 const NOMBRE_ARCHIVO_AUDIT = { julia: 'archivo de Agustín', esteban: 'planilla de Esteban', tango: 'quincenas de TANGO (Mauro)', remitos: 'remitos de Roberto', ocInsumos: 'OC de Guillermo' };
 function _sheetUrlAudit(it) {
-  const base = SHEET_URLS_AUDIT[it && it.src];
+  // Archivos que cambian por mes (quincenas de TANGO): el ítem trae el ID del archivo
+  const base = (it && it.fileId) ? `https://docs.google.com/spreadsheets/d/${it.fileId}/edit` : SHEET_URLS_AUDIT[it && it.src];
   if (!base) return '';
   return (it.gid != null && it.fila) ? `${base}#gid=${it.gid}&range=A${it.fila}` : base;
 }
@@ -7802,7 +7803,11 @@ function runAuditorias() {
         const k = norm(c);
         if (!porCentro[k]) porCentro[k] = { nombre: c, monto: 0, items: [] };
         porCentro[k].monto += r.monto || 0;
-        porCentro[k].items.push({ cat: MES[m] || m, txt: 'Quincenas de ' + ((MES[m] || m).replace(' 2026', '')) + ' · columna OBRA (R) = "' + c + '"', monto: r.monto || 0, src: 'tango' });
+        // Una línea por pestaña (quincena) con link a la primera fila a corregir
+        const mesTxt = (MES[m] || m).replace(' 2026', '');
+        const refs = (r.refs || []).filter(x => x && x.gid != null && x.fila);
+        if (r.fileId && refs.length) refs.forEach((x, j) => porCentro[k].items.push({ cat: j ? '' : (MES[m] || m), txt: mesTxt + ' · columna OBRA (R) = "' + c + '" · ' + x.n + ' fila' + (x.n !== 1 ? 's' : ''), monto: j ? 0 : (r.monto || 0), src: 'tango', fileId: r.fileId, gid: x.gid, fila: x.fila }));
+        else porCentro[k].items.push({ cat: MES[m] || m, txt: 'Quincenas de ' + mesTxt + ' · columna OBRA (R) = "' + c + '"', monto: r.monto || 0, src: 'tango' });
       });
     });
     Object.values(porCentro).sort((a, b) => b.monto - a.monto).forEach(x => {
@@ -7979,7 +7984,7 @@ function renderAuditorias() {
           ${r.items.map(i => `<tr>
             <td style="padding:4px 8px;color:var(--muted);white-space:nowrap;">${i.cat}</td>
             <td style="padding:4px 8px;">${i.txt}</td>
-            <td style="padding:4px 8px;text-align:right;font-weight:600;white-space:nowrap;">${fmt(i.monto)}</td>
+            <td style="padding:4px 8px;text-align:right;font-weight:600;white-space:nowrap;">${i.monto ? fmt(i.monto) : ''}</td>
             <td style="padding:4px 8px;text-align:right;">${_sheetLinkAudit(i)}</td>
           </tr>`).join('')}
         </table>` : ''}
