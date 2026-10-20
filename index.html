@@ -3449,10 +3449,10 @@ function openCombustibleObra(codObra, nombreObra, mesOver) {
       <div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--muted);">EQUIPOS (TANQUE PROPIO)</div><div style="font-size:16px;font-weight:700;">${fmt(eqp)}</div></div>
       <div style="flex:1;min-width:130px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:var(--muted);">VEHÍCULOS (ESTACIONES)</div><div style="font-size:16px;font-weight:700;">${fmt(veh)}</div></div>
     </div>
+    ${_combFleteHTML(flete)}
     <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;">PRINCIPALES EQUIPOS / VEHÍCULOS</div>
     ${eqs.map(([eq, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);"><span>${_esc(eq)} <span style="color:var(--muted);font-size:10.5px;">${Math.round(v.litros).toLocaleString('es-AR')} L</span></span><strong class="neg-val">${fmt(v.monto)}</strong></div>`).join('')}`
-    : '<p class="nd" style="padding:16px 0;">Sin combustible cargado a esta obra en el período.</p>'}
-    ${_combFleteHTML(flete)}
+    : '<p class="nd" style="padding:16px 0;">Sin combustible cargado a esta obra en el período.</p>' + _combFleteHTML(flete)}
     <div class="nota-fuente" style="margin-top:12px;">Fuente: <a href="${SHEET_URLS_AUDIT.combLeandro}" target="_blank" rel="noopener">tanque propio (Leandro Casares)</a> · <a href="${SHEET_URLS_AUDIT.combTiburcio}" target="_blank" rel="noopener">Tiburcio Sanz</a> · <a href="${SHEET_URLS_AUDIT.combHerrero}" target="_blank" rel="noopener">Carlos Herrero</a>, columna OBRA GENERAL. El alquiler interno de equipos no incluye combustible.</div>`;
   panel.classList.add('open'); overlay.classList.add('open');
 }
@@ -3483,7 +3483,7 @@ function _combUnidad(unidad, mes) {
 // fletero del pago del flete. No suma en ningún total; solo se informa (oct-2026).
 function _combFleteHTML(f, alcance) {
   if (!f || !(f.monto > 0)) return '';
-  return `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:10px 12px;margin:14px 0 4px;">
+  return `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:10px 12px;margin:0 0 14px;">
     <div style="font-size:10px;font-weight:700;color:#92400e;">FLETE · CAMIÓN BATEA (A DESCONTAR)${alcance ? ' · ' + alcance.toUpperCase() : ''}</div>
     <div style="font-size:18px;font-weight:800;color:#92400e;">${fmt(f.monto)}</div>
     <div style="font-size:11px;color:#78350f;">${Math.round(f.litros).toLocaleString('es-AR')} litros${f.n ? ' · ' + f.n + ' carga' + (f.n !== 1 ? 's' : '') : ''} · no suma en el total: se descuenta del pago a los fleteros</div>
@@ -3507,21 +3507,23 @@ function openCombustibleUnidad(unidad) {
   const panel = document.getElementById('sidePanel'), overlay = document.getElementById('overlay'), content = document.getElementById('panelContent');
   if (!panel || !content) return;
   const c = _combUnidad(unidad, mesActual);
+  // el flete se descuenta al fletero por el total del mes, no por sector
+  const fleteHTML = (() => {
+    const ms = mesActual === 'total' ? MES_ORDER.filter(m => COMBUSTIBLE[m]) : [mesActual];
+    const f = { monto: 0, litros: 0, n: 0 };
+    ms.forEach(m => ((COMBUSTIBLE[m] && COMBUSTIBLE[m].porObra) || []).forEach(it => { f.monto += it.flete || 0; f.litros += it.fleteLitros || 0; f.n += it.fleteN || 0; }));
+    return _combFleteHTML(f, 'total del período, todas las obras');
+  })();
   const filasSec = c ? Object.entries(c.porSector).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--border);"><span>${_esc(k)}</span><strong class="neg-val">${fmt(v)}</strong></div>`).join('') : '';
   const filasEq = c ? Object.entries(c.porEq).sort((a, b) => b[1].monto - a[1].monto).slice(0, 15).map(([eq, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);"><span>${_esc(eq)} <span style="color:var(--muted);font-size:10.5px;">${Math.round(v.litros).toLocaleString('es-AR')} L</span></span><strong class="neg-val">${fmt(v.monto)}</strong></div>`).join('') : '';
   content.innerHTML = `
     <div class="panel-title">${u.titulo}</div>
     <div class="panel-sub">${mesActual === 'total' ? 'Todos los meses' : (MES[mesActual] || mesActual)} · cargas con OBRA GENERAL = ${u.sectores.map(x => x.replace(/\b\w/g, l => l.toUpperCase())).join(', ')}</div>
     ${c ? `<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:10px 12px;margin:14px 0;"><div style="font-size:10px;font-weight:700;color:var(--muted);">TOTAL</div><div class="neg-val" style="font-size:22px;font-weight:800;">${fmt(c.total)}</div><div style="font-size:11px;color:var(--muted);">${Math.round(c.litros).toLocaleString('es-AR')} litros · ${c.n} carga${c.n !== 1 ? 's' : ''}</div></div>
-    <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;">POR SECTOR</div>${filasSec}
+    ${fleteHTML}
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 4px;">POR SECTOR</div>${filasSec}
     <div style="font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 4px;">PRINCIPALES EQUIPOS</div>${filasEq}`
-    : '<p class="nd" style="padding:16px 0;">Sin combustible cargado en el período.</p>'}
-    ${(() => { // el flete se descuenta al fletero por el total del mes, no por sector
-      const ms = mesActual === 'total' ? MES_ORDER.filter(m => COMBUSTIBLE[m]) : [mesActual];
-      const f = { monto: 0, litros: 0, n: 0 };
-      ms.forEach(m => ((COMBUSTIBLE[m] && COMBUSTIBLE[m].porObra) || []).forEach(it => { f.monto += it.flete || 0; f.litros += it.fleteLitros || 0; f.n += it.fleteN || 0; }));
-      return _combFleteHTML(f, 'total del período, todas las obras');
-    })()}
+    : '<p class="nd" style="padding:16px 0;">Sin combustible cargado en el período.</p>' + fleteHTML}
     <div class="nota-fuente" style="margin-top:12px;">${unidad === 'planta' ? 'El combustible de Predio Warnes es del cargador frontal que trabaja para la Planta, por eso se suma acá. ' : ''}Se resta en Rentabilidad → Resultado ${unidad === 'planta' ? 'Planta' : 'Taller'}. Fuente: <a href="${SHEET_URLS_AUDIT.combLeandro}" target="_blank" rel="noopener">tanque propio (Leandro Casares)</a> · <a href="${SHEET_URLS_AUDIT.combTiburcio}" target="_blank" rel="noopener">Tiburcio Sanz</a> · <a href="${SHEET_URLS_AUDIT.combHerrero}" target="_blank" rel="noopener">Carlos Herrero</a>.</div>`;
   panel.classList.add('open'); overlay.classList.add('open');
 }
