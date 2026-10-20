@@ -964,6 +964,37 @@
   /* Íconos en botones */
   .btn-refresh .ico, .btn-logout .ico { width: 13px; height: 13px; flex: 0 0 auto; }
   .btn-logout { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* Mapa de conciliación de Auditorías (Agustín ↔ Esteban) */
+  .mapa-audit { font-size: 12px; margin-top: 4px; }
+  .mapa-head, .mapa-row { display: grid; grid-template-columns: 1fr 128px 1fr; align-items: stretch; }
+  .mapa-head { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 4px 0 6px; border-bottom: 1px solid var(--border); }
+  .mapa-head .mapa-col { padding: 0 10px; }
+  .mapa-row { border-bottom: 1px solid #eef1f5; transition: background .15s; border-radius: 8px; }
+  .mapa-row:hover { background: #eef3fb; }
+  .mapa-row:hover .mapa-col { background: #e4ecf9; }
+  .mapa-col { padding: 7px 10px; min-width: 0; transition: background .15s; }
+  .mapa-mid { display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700; color: var(--muted); white-space: nowrap; padding: 0 6px; }
+  .mapa-it { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .mapa-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mapa-cat { margin-left: 6px; font-size: 9.5px; font-weight: 600; color: var(--muted); background: #f3f4f6; border-radius: 6px; padding: 1px 6px; }
+  .mapa-monto { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mapa-monto a { margin-left: 6px; }
+  .mapa-vacio { color: #b0b6c1; font-style: italic; font-size: 11px; padding: 2px 0; }
+  .mapa-row.ok .mapa-mid { color: #15803d; }
+  .mapa-row.dif .mapa-mid { color: #b45309; }
+  .mapa-row.dif .mapa-col { background: #fffbeb; }
+  .mapa-row.falta-e .mapa-mid, .mapa-row.falta-j .mapa-mid { color: #b91c1c; }
+  .mapa-row.falta-e .mapa-col:last-child, .mapa-row.falta-j .mapa-col:first-child { background: #fef2f2; }
+  .mapa-row.tot { border-top: 2px solid var(--border); border-bottom: none; font-size: 12.5px; }
+  .mapa-row.tot .mapa-col { background: #f7f8fb; }
+  .mapa-row.otro { color: #8b93a1; font-size: 11.5px; }
+  .mapa-otros { margin-top: 8px; }
+  .mapa-otros summary { cursor: pointer; font-size: 11px; color: var(--muted); padding: 4px 0; }
+  .mapa-leyenda { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 10.5px; color: var(--muted); }
+  .mapa-leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .mapa-leyenda i.ok { background: #bbf7d0; } .mapa-leyenda i.dif { background: #fde68a; } .mapa-leyenda i.falta-e, .mapa-leyenda i.falta-j { background: #fecaca; }
+  @media (max-width: 860px) { .mapa-head, .mapa-row { grid-template-columns: 1fr 92px 1fr; } .mapa-txt { white-space: normal; } }
 </style>
 </head>
 <body>
@@ -7520,7 +7551,7 @@ function _reconciliarItemsAudit(itemsJ, itemsE) {
   });
   const sobranEnEsteban = itemsE.filter((_, i) => !usadosE.has(i));
   const mismatches = matches.filter(m => Math.abs(m.dif) > AUDIT_TOLERANCIA);
-  return { faltanEnEsteban, sobranEnEsteban, mismatches };
+  return { faltanEnEsteban, sobranEnEsteban, mismatches, matches };
 }
 // Nombre corto para mostrar: saca el prefijo "Nombre de obra - " si está
 function _labelCortoAudit(txt, nombreObra) {
@@ -7632,6 +7663,15 @@ function runAuditorias() {
       pistaItems,
       responsable: dif > 0 ? 'Esteban / Agustín' : 'Agustín',
       items: itemsJ.concat(itemsE),
+      // Mapa de conciliación: pares que coinciden, los que difieren, lo que
+      // falta de cada lado y lo no comparable (fondos, redets, conciliados)
+      mapa: {
+        pares: recon.matches,
+        faltanEnEsteban: recon.faltanEnEsteban,
+        sobranEnEsteban: recon.sobranEnEsteban,
+        otrosJ: itemsJ.filter(i => !itemsJcomp.some(c => c.fila === i.fila && c.gid === i.gid)),
+        otrosE: itemsE.filter(i => !itemsEcomp.some(c => c.fila === i.fila && c.gid === i.gid)),
+      },
     });
   });
 
@@ -7980,7 +8020,7 @@ function renderAuditorias() {
           ${r.pistaItems.map(p => `<div style="font-size:12px;color:#78350f;line-height:1.5;">${p}</div>`).join('')}
         </div>` : ''}
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Corrección corresponde a: <strong>${r.responsable}</strong>${!r.items.length && r.link ? ' · ' + _sheetLinkAudit({ src: r.link }) : ''}</div>
-        ${r.items.length ? `<table style="width:100%;font-size:11.5px;">
+        ${r.mapa ? _mapaAuditHTML(r.mapa) : r.items.length ? `<table style="width:100%;font-size:11.5px;">
           ${r.items.map(i => `<tr>
             <td style="padding:4px 8px;color:var(--muted);white-space:nowrap;">${i.cat}</td>
             <td style="padding:4px 8px;">${i.txt}</td>
@@ -7990,6 +8030,36 @@ function renderAuditorias() {
         </table>` : ''}
       </div>
     </details>`).join('');
+}
+
+// Mapa de conciliación (oct-2026): dos columnas, Agustín a la izquierda y
+// Esteban a la derecha, una fila por par. Así se ve de un vistazo qué va con
+// qué, qué difiere en monto y qué falta de cada lado. El mouse resalta la fila.
+function _mapaAuditHTML(m) {
+  const celda = (it, lado) => it
+    ? `<div class="mapa-it"><div class="mapa-txt">${_esc(it.txt || '')}${it.cat && lado === 'e' ? `<span class="mapa-cat">${_esc(String(it.cat).replace(/^Esteban · /, ''))}</span>` : ''}</div><div class="mapa-monto">${fmt(it.monto || 0)} ${_sheetLinkAudit(it)}</div></div>`
+    : `<div class="mapa-vacio">${lado === 'j' ? 'No está en el archivo de Agustín' : 'No está en la planilla de Esteban'}</div>`;
+  const fila = (j, e, estado, txt) => `<div class="mapa-row ${estado}"><div class="mapa-col">${celda(j, 'j')}</div><div class="mapa-mid" title="${_esc(txt)}">${txt}</div><div class="mapa-col">${celda(e, 'e')}</div></div>`;
+  const filas = [];
+  (m.pares || []).forEach(p => {
+    const ok = Math.abs(p.dif) <= AUDIT_TOLERANCIA;
+    filas.push(fila(p.j, p.e, ok ? 'ok' : 'dif', ok ? '✓ coincide' : '≠ dif. ' + fmt(Math.abs(p.dif))));
+  });
+  (m.faltanEnEsteban || []).forEach(j => filas.push(fila(j, null, 'falta-e', '→ falta en Esteban')));
+  (m.sobranEnEsteban || []).forEach(e => filas.push(fila(null, e, 'falta-j', '← falta en Agustín')));
+  const otros = [];
+  (m.otrosJ || []).forEach(j => otros.push(fila(j, null, 'otro', '·')));
+  (m.otrosE || []).forEach(e => otros.push(fila(null, e, 'otro', '·')));
+  const sum = a => (a || []).reduce((t, x) => t + (x.monto || 0), 0);
+  const totJ = sum((m.pares || []).map(p => p.j)) + sum(m.faltanEnEsteban);
+  const totE = sum((m.pares || []).map(p => p.e)) + sum(m.sobranEnEsteban);
+  return `<div class="mapa-audit">
+    <div class="mapa-head"><div class="mapa-col">Agustín · a cobrar</div><div class="mapa-mid"></div><div class="mapa-col">Esteban · programación</div></div>
+    ${filas.join('') || '<div class="mapa-vacio" style="padding:8px;">Sin ítems comparables.</div>'}
+    <div class="mapa-row tot"><div class="mapa-col"><div class="mapa-it"><div class="mapa-txt">Total comparable</div><div class="mapa-monto">${fmt(totJ)}</div></div></div><div class="mapa-mid">${Math.abs(totJ - totE) <= AUDIT_TOLERANCIA ? '=' : 'dif. ' + fmt(Math.abs(totJ - totE))}</div><div class="mapa-col"><div class="mapa-it"><div class="mapa-txt">Total comparable</div><div class="mapa-monto">${fmt(totE)}</div></div></div></div>
+    ${otros.length ? `<details class="mapa-otros"><summary>Otros movimientos que no se comparan (${otros.length}): fondos de reparo, redeterminaciones, cobrados y conciliados</summary>${otros.join('')}</details>` : ''}
+    <div class="mapa-leyenda"><span><i class="ok"></i> coincide</span><span><i class="dif"></i> difiere en monto</span><span><i class="falta-e"></i> falta en Esteban</span><span><i class="falta-j"></i> falta en Agustín</span> · Pasá el mouse por una fila para resaltar el par.</div>
+  </div>`;
 }
 
 function copiarAuditorias(btn) {
