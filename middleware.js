@@ -14,6 +14,17 @@ export default async function middleware(req) {
   const path = url.pathname;
   if (PUBLIC.has(path)) return;
 
+  // Entrada desde la App INGECO con ticket: siempre se canjea (aunque haya sesión,
+  // puede ser otra persona en el mismo navegador).
+  const tk = url.searchParams.get('tk');
+  if (tk && !path.startsWith('/api/')) {
+    url.searchParams.delete('tk');
+    const canje = new URL('/api/auth/ticket', req.url);
+    canje.searchParams.set('tk', tk);
+    canje.searchParams.set('next', path + url.search);
+    return Response.redirect(canje.toString(), 302);
+  }
+
   const session = await sessionFromRequestHeaders(req.headers);
   if (session) return; // sigue al recurso pedido
 
